@@ -28,3 +28,7 @@ Use the following rules to guide your planning process.
   - What must be tested end-to-end (integration boundaries).
 - If a change requires both backend and frontend, plan to merge backend first (with safe new code paths), then frontend. This ensures backend changes can be verified independently.
 - Remove dead / unused code before completing your task.
+
+**How to verify functionality:**
+- run `npm run start` from the root directory.
+- access the page with the Playwright tool.

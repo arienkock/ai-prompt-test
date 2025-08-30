@@ -9,7 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.3.11"
+    "@vee-validate/yup": "^4.15.1",
+    "axios": "^1.11.0",
+    "vee-validate": "^4.15.1",
+    "vue": "^3.3.11",
+    "vue-router": "^4.5.1",
+    "yup": "^1.7.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.2",

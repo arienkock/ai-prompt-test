@@ -59,7 +59,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommand, Registe
       const userId = uuidv4();
       const user = new User(
         userId,
-        command.email,
+        command.email.toLowerCase(), // Ensure consistent lowercase email
         command.firstName,
         command.lastName,
         true // isActive = true by default

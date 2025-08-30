@@ -73,8 +73,6 @@ export class UserRepository implements IUserRepository {
 
     const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
-      
       const result = await client.query(
         `INSERT INTO users (id, email, firstName, lastName, isActive, createdAt, updatedAt) 
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
@@ -89,11 +87,8 @@ export class UserRepository implements IUserRepository {
         ]
       );
       
-      await client.query('COMMIT');
       return ValidationResult.success();
     } catch (error: any) {
-      await client.query('ROLLBACK');
-      
       // Handle unique constraint violations
       if (error.code === '23505' && error.constraint === 'users_email_unique') {
         return new ValidationResult(false, [
@@ -283,8 +278,6 @@ export class UserRepository implements IUserRepository {
 
     const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
-      
       const result = await client.query(
         `INSERT INTO user_authentications (id, userId, provider, providerId, hashedPassword, isActive, createdAt, updatedAt) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
@@ -300,11 +293,8 @@ export class UserRepository implements IUserRepository {
         ]
       );
       
-      await client.query('COMMIT');
       return ValidationResult.success();
     } catch (error: any) {
-      await client.query('ROLLBACK');
-      
       // Handle foreign key constraint violations
       if (error.code === '23503' && error.constraint === 'user_authentications_userId_fkey') {
         return new ValidationResult(false, [
