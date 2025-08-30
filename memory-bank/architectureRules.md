@@ -1,5 +1,5 @@
 # Architecture Rules
-Follow all instructions in this document! During task planning you must read these rules. After implementation you must read the rules again to see if you missed anything.
+Follow all instructions in this document! During task planning you MUST read these rules. After implementation you MUST read the rules again to see if you missed anything.
 
 If you are missing information needed to satisfy a rule: ASK THE USER!
 
@@ -27,8 +27,8 @@ If rules in this document seem to contradict or conflict: ASK THE USER!
 - Entities are persistent domain types, and therefore MUST have a single identity field, or composite key.
 - Entities MUST HAVE a corresponding repository interface with methods for CRUD operations.
 - All entity fields MUST have constraints.
-- Entity fields that reference other entities by ID, direct object references, or collections, must also define relational constraints which are checked by the entity validation function.
-- Entity validation functions must check all field constraints and return validation results of all fields. This should be implemented as a structured object listing all violations.
+- Entity fields that reference other entities by ID, direct object references, or collections, MUST also define relational constraints which are checked by the entity validation function.
+- Entity validation functions MUST check all field constraints and return validation results of all fields. This should be implemented as a structured object listing all violations.
 - Text (string) fields MUST have a maximum length constraint
 - Repository methods that return a list of entities MUST use  pagination.
 - Unbounded / unlimited results sets are an ERROR!
@@ -50,10 +50,10 @@ If rules in this document seem to contradict or conflict: ASK THE USER!
 - Use case objects that load a list of entities MUST use repositories to limit results to what the user is allowed to see.
 - Re-use the READ use cases as much as possible. Example: for loading different entity graphs, pass the relationships to include as a property in the query object.
 - Use cases for reading data take a query object.
-- There MUST exist a transaction helper higher order function that must be used to invoke a use case within a transaction. This rule is the responsibility of the calling code (e.g. Web Controller).
+- There MUST exist a transaction helper higher order function that MUST be used to invoke a use case within a transaction. This rule is the responsibility of the calling code (e.g. Web Controller).
 - Calling a use case outside of a transaction callback IS AN ERROR. Since the first (top level) use case MUST be called within a transaction, any other use cases in the call tree are implicitly part of the same transaction.
-- Command and query objects MUST NOT use / reference entity types. Instead they must use DTO types that have a subset of the fields of the entities. Reason: protect internal entity fields from being overridden.
-- Mapping logic between DTO and entity types may reside in helper functions near (in the same file as, or even private methods) the use cases, unless the mapping logic is re-usable (e.g. pagination parameters and pagination response metadata). In the latter case the mapping code must not be duplicated.
+- Command and query objects MUST NOT use / reference entity types. Instead they MUST use DTO types that have a subset of the fields of the entities. Reason: protect internal entity fields from being overridden.
+- Mapping logic between DTO and entity types may reside in helper functions near (in the same file as, or even private methods) the use cases, unless the mapping logic is re-usable (e.g. pagination parameters and pagination response metadata). In the latter case the mapping code MUST not be duplicated.
 - If you know that a field is read-only, it should be returned by the use case but never accepted in the DTO.
 - If you are unsure if a field needs to be part of DTO or not: ASK THE USER!
 - A weak entity cannot exist on its own. Weak entities MUST have at least one non-nullable relationship. (Example: a profile MUST belong to a user)
@@ -62,7 +62,7 @@ If rules in this document seem to contradict or conflict: ASK THE USER!
 - Context objects MUST be passed to use case objects.
 - Context objects MUST contain the identity of the user requesting the object.
 - All preventable domain errors MUST be distinguishable as being: invalid input (will be mapped to 400 status code), authorization and authentication errors (will be mapped to 403 status code), anything else (mapped to 500 status code).
-- Code (functions, types, etc.) shared across entities and use cases MUST NOT reference entity and use case types. It must be generic and agnostic of the domain model. Example: `validationUtils imports User` ❌ NOT ALLOWED. But `User imports validationUtils` ✅ GOOD.
+- Code (functions, types, etc.) shared across entities and use cases MUST NOT reference entity and use case types. It MUST be generic and agnostic of the domain model. Example: `validationUtils imports User` ❌ NOT ALLOWED. But `User imports validationUtils` ✅ GOOD.
 
 ### Implementation Advice & Examples
 - Define a standard return type:
@@ -144,6 +144,7 @@ Data access is a layer of the architecture consisting of:
 
 - All (non function) entity fields of a persisted entity MUST exist in the database schema. Calculated fields should be implemented as methods/function.
 - The names of entity fields and database columns MUST be identical and in camelCase (despite this going against most RDBMS conventions!). If they don’t: it’s an ERROR!
+- All column names and aliases in SQL queries and migrations MUST be quoted so they match the code.
 - If a persisted entity has a real field (not a calculated property) that is not part of the database schema: this is an ERROR!
 - Database tables MUST have timestamp columns for creation (createdAt) and update times (updatedAt) that are set BY THE DATABASE.
 - The updatedAt and createdAt columns reside in the tables, and are only included on the entity objects if the entity type defines fields of the same name.
