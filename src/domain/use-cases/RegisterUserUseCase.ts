@@ -4,8 +4,9 @@ import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
+import { UseCase, DomainError, DomainErrorCode } from '../types/UseCase';
 
-export interface RegisterUserRequest {
+export interface RegisterUserCommand {
   email: string;
   firstName: string;
   lastName: string;
@@ -18,17 +19,35 @@ export interface RegisterUserResponse {
   errors: ValidationError[];
 }
 
-export class RegisterUserUseCase {
+export class RegisterUserUseCase implements UseCase<RegisterUserCommand, RegisterUserResponse> {
   private userRepository: IUserRepository;
 
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
   }
 
-  async execute(request: RegisterUserRequest, context: Context): Promise<RegisterUserResponse> {
+  async execute(context: Context, command: RegisterUserCommand): Promise<RegisterUserResponse> {
     try {
+      // Validate command/query as per architecture rules
+      const commandValidation = this.validateCommand(command);
+      if (!commandValidation.valid) {
+        return {
+          success: false,
+          errors: commandValidation.errors
+        };
+      }
+
+      // Validate password (was missing from execution flow)
+      const passwordValidation = this.validatePassword(command.password);
+      if (!passwordValidation.valid) {
+        return {
+          success: false,
+          errors: passwordValidation.errors
+        };
+      }
+
       // Check if user with email already exists
-      const existingUser = await this.userRepository.findByEmail(request.email);
+      const existingUser = await this.userRepository.findByEmail(command.email);
       if (existingUser) {
         return {
           success: false,
@@ -40,13 +59,13 @@ export class RegisterUserUseCase {
       const userId = uuidv4();
       const user = new User(
         userId,
-        request.email,
-        request.firstName,
-        request.lastName,
+        command.email,
+        command.firstName,
+        command.lastName,
         true // isActive = true by default
       );
 
-      // Validate user entity
+      // Validate user entity as per architecture rules
       const userValidation = user.validate();
       if (!userValidation.valid) {
         return {
@@ -66,7 +85,7 @@ export class RegisterUserUseCase {
 
       // Hash password
       const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(request.password, saltRounds);
+      const hashedPassword = await bcrypt.hash(command.password, saltRounds);
 
       // Create user authentication entity
       const authId = uuidv4();
@@ -74,7 +93,7 @@ export class RegisterUserUseCase {
         authId,
         userId,
         'email',
-        request.email.toLowerCase(),
+        command.email.toLowerCase(),
         hashedPassword
       );
 
@@ -114,6 +133,41 @@ export class RegisterUserUseCase {
     }
   }
 
+  /**
+   * Validate command input as per architecture rules
+   * Command/Query validation must be stateless and not require repository usage
+   */
+  private validateCommand(command: RegisterUserCommand): ValidationResult {
+    const errors: ValidationError[] = [];
+
+    if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {
+      errors.push(new ValidationError('email', 'Email is required'));
+    } else if (command.email.length > 255) {
+      errors.push(new ValidationError('email', 'Email must not exceed 255 characters'));
+    }
+
+    if (!command.firstName || typeof command.firstName !== 'string' || command.firstName.trim().length === 0) {
+      errors.push(new ValidationError('firstName', 'First name is required'));
+    } else if (command.firstName.length > 100) {
+      errors.push(new ValidationError('firstName', 'First name must not exceed 100 characters'));
+    }
+
+    if (!command.lastName || typeof command.lastName !== 'string' || command.lastName.trim().length === 0) {
+      errors.push(new ValidationError('lastName', 'Last name is required'));
+    } else if (command.lastName.length > 100) {
+      errors.push(new ValidationError('lastName', 'Last name must not exceed 100 characters'));
+    }
+
+    if (!command.password || typeof command.password !== 'string') {
+      errors.push(new ValidationError('password', 'Password is required'));
+    }
+
+    return new ValidationResult(errors.length === 0, errors);
+  }
+
+  /**
+   * Validate password complexity - stateless validation as per architecture rules
+   */
   private validatePassword(password: string): ValidationResult {
     const errors: ValidationError[] = [];
 

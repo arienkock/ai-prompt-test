@@ -1,5 +1,4 @@
 import * as jwt from 'jsonwebtoken';
-import { User } from '../../domain/entities/User';
 
 export interface JwtPayload {
   userId: string;
@@ -11,6 +10,11 @@ export interface JwtPayload {
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface UserTokenData {
+  userId: string;
+  email: string;
 }
 
 export class JwtService {
@@ -26,10 +30,10 @@ export class JwtService {
     this.refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRY || '7d';
   }
 
-  generateTokenPair(user: User): TokenPair {
+  generateTokenPair(userData: UserTokenData): TokenPair {
     const payload: JwtPayload = {
-      userId: user.id!,
-      email: user.email
+      userId: userData.userId,
+      email: userData.email
     };
 
     const accessToken = jwt.sign(
@@ -100,13 +104,13 @@ export class JwtService {
       return null;
     }
 
-    // Create a user-like object for token generation
-    const user = {
-      id: payload.userId,
+    // Create user data object for token generation
+    const userData: UserTokenData = {
+      userId: payload.userId,
       email: payload.email
-    } as User;
+    };
 
-    return this.generateTokenPair(user);
+    return this.generateTokenPair(userData);
   }
 
   getTokenExpiration(token: string): Date | null {

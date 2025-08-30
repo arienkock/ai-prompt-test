@@ -2,7 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import { User } from '../../domain/entities/User';
 import { UserAuthentication } from '../../domain/entities/UserAuthentication';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
-import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
+import { ValidationResult, ValidationError, PaginationParams } from '../../shared/types/ValidationTypes';
 
 export class UserRepository implements IUserRepository {
   private pool: Pool;
@@ -27,11 +27,11 @@ export class UserRepository implements IUserRepository {
       return new User(
         row.id,
         row.email,
-        row.first_name,
-        row.last_name,
-        row.is_active,
-        row.created_at,
-        row.updated_at
+        row.firstName,
+        row.lastName,
+        row.isActive,
+        row.createdAt,
+        row.updatedAt
       );
     } finally {
       client.release();
@@ -54,11 +54,11 @@ export class UserRepository implements IUserRepository {
       return new User(
         row.id,
         row.email,
-        row.first_name,
-        row.last_name,
-        row.is_active,
-        row.created_at,
-        row.updated_at
+        row.firstName,
+        row.lastName,
+        row.isActive,
+        row.createdAt,
+        row.updatedAt
       );
     } finally {
       client.release();
@@ -76,7 +76,7 @@ export class UserRepository implements IUserRepository {
       await client.query('BEGIN');
       
       const result = await client.query(
-        `INSERT INTO users (id, email, first_name, last_name, is_active, created_at, updated_at) 
+        `INSERT INTO users (id, email, firstName, lastName, isActive, createdAt, updatedAt) 
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
         [
           user.id,
@@ -126,7 +126,7 @@ export class UserRepository implements IUserRepository {
       await client.query('BEGIN');
       
       const result = await client.query(
-        `UPDATE users SET email = $2, first_name = $3, last_name = $4, is_active = $5, updated_at = $6 
+        `UPDATE users SET email = $2, firstName = $3, lastName = $4, isActive = $5, updatedAt = $6 
          WHERE id = $1`,
         [
           user.id,
@@ -170,7 +170,7 @@ export class UserRepository implements IUserRepository {
       await client.query('BEGIN');
       
       // First delete all user authentications (foreign key constraint)
-      await client.query('DELETE FROM user_authentications WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM user_authentications WHERE userId = $1', [id]);
       
       // Then delete the user
       const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
@@ -194,22 +194,23 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async list(limit: number = 50, offset: number = 0): Promise<User[]> {
+  async list(pagination: PaginationParams): Promise<User[]> {
     const client = await this.pool.connect();
     try {
+      const offset = (pagination.page - 1) * pagination.pageSize;
       const result = await client.query(
-        'SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
-        [limit, offset]
+        'SELECT * FROM users ORDER BY createdAt DESC LIMIT $1 OFFSET $2',
+        [pagination.pageSize, offset]
       );
       
       return result.rows.map(row => new User(
         row.id,
         row.email,
-        row.first_name,
-        row.last_name,
-        row.is_active,
-        row.created_at,
-        row.updated_at
+        row.firstName,
+        row.lastName,
+        row.isActive,
+        row.createdAt,
+        row.updatedAt
       ));
     } finally {
       client.release();
@@ -219,7 +220,7 @@ export class UserRepository implements IUserRepository {
   async findAuthenticationByUserId(userId: string, provider?: string): Promise<UserAuthentication[]> {
     const client = await this.pool.connect();
     try {
-      let query = 'SELECT * FROM user_authentications WHERE user_id = $1';
+      let query = 'SELECT * FROM user_authentications WHERE userId = $1';
       const params: any[] = [userId];
       
       if (provider) {
@@ -227,18 +228,19 @@ export class UserRepository implements IUserRepository {
         params.push(provider);
       }
       
-      query += ' ORDER BY created_at DESC';
+      query += ' ORDER BY createdAt DESC';
       
       const result = await client.query(query, params);
       
       return result.rows.map(row => new UserAuthentication(
         row.id,
-        row.user_id,
+        row.userId,
         row.provider,
-        row.provider_id,
-        row.hashed_password,
-        row.created_at,
-        row.updated_at
+        row.providerId,
+        row.hashedPassword,
+        row.isActive,
+        row.createdAt,
+        row.updatedAt
       ));
     } finally {
       client.release();
@@ -249,7 +251,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.pool.connect();
     try {
       const result = await client.query(
-        'SELECT * FROM user_authentications WHERE provider = $1 AND provider_id = $2',
+        'SELECT * FROM user_authentications WHERE provider = $1 AND providerId = $2',
         [provider, providerId]
       );
       
@@ -260,12 +262,13 @@ export class UserRepository implements IUserRepository {
       const row = result.rows[0];
       return new UserAuthentication(
         row.id,
-        row.user_id,
+        row.userId,
         row.provider,
-        row.provider_id,
-        row.hashed_password,
-        row.created_at,
-        row.updated_at
+        row.providerId,
+        row.hashedPassword,
+        row.isActive,
+        row.createdAt,
+        row.updatedAt
       );
     } finally {
       client.release();
@@ -283,14 +286,15 @@ export class UserRepository implements IUserRepository {
       await client.query('BEGIN');
       
       const result = await client.query(
-        `INSERT INTO user_authentications (id, user_id, provider, provider_id, hashed_password, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        `INSERT INTO user_authentications (id, userId, provider, providerId, hashedPassword, isActive, createdAt, updatedAt) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
         [
           userAuth.id,
           userAuth.userId,
           userAuth.provider,
           userAuth.providerId,
           userAuth.hashedPassword,
+          userAuth.isActive,
           new Date(),
           new Date()
         ]
@@ -302,14 +306,14 @@ export class UserRepository implements IUserRepository {
       await client.query('ROLLBACK');
       
       // Handle foreign key constraint violations
-      if (error.code === '23503' && error.constraint === 'user_authentications_user_id_fkey') {
+      if (error.code === '23503' && error.constraint === 'user_authentications_userId_fkey') {
         return new ValidationResult(false, [
           new ValidationError('userId', 'User does not exist')
         ]);
       }
       
       // Handle unique constraint violations
-      if (error.code === '23505' && error.constraint === 'user_authentications_provider_provider_id_unique') {
+      if (error.code === '23505' && error.constraint === 'user_authentications_provider_providerId_unique') {
         return new ValidationResult(false, [
           new ValidationError('provider', 'Authentication already exists for this provider')
         ]);
@@ -340,7 +344,7 @@ export class UserRepository implements IUserRepository {
       await client.query('BEGIN');
       
       const result = await client.query(
-        `UPDATE user_authentications SET user_id = $2, provider = $3, provider_id = $4, hashed_password = $5, updated_at = $6 
+        `UPDATE user_authentications SET userId = $2, provider = $3, providerId = $4, hashedPassword = $5, isActive = $6, updatedAt = $7 
          WHERE id = $1`,
         [
           userAuth.id,
@@ -348,6 +352,7 @@ export class UserRepository implements IUserRepository {
           userAuth.provider,
           userAuth.providerId,
           userAuth.hashedPassword,
+          userAuth.isActive,
           new Date()
         ]
       );
@@ -396,9 +401,10 @@ export class UserRepository implements IUserRepository {
     const client = await this.pool.connect();
     try {
       const result = await client.query(
-        `SELECT u.*, ua.* 
+        `SELECT u.id as user_id, u.email as user_email, u.firstName as user_firstName, u.lastName as user_lastName, u.isActive as user_isActive, u.createdAt as user_createdAt, u.updatedAt as user_updatedAt,
+         ua.id as auth_id, ua.userId as auth_userId, ua.provider as auth_provider, ua.providerId as auth_providerId, ua.hashedPassword as auth_hashedPassword, ua.isActive as auth_isActive, ua.createdAt as auth_createdAt, ua.updatedAt as auth_updatedAt
          FROM users u 
-         JOIN user_authentications ua ON u.id = ua.user_id 
+         JOIN user_authentications ua ON u.id = ua.userId 
          WHERE u.email = $1 AND ua.provider = $2`,
         [email.toLowerCase(), provider]
       );
@@ -409,23 +415,24 @@ export class UserRepository implements IUserRepository {
       
       const row = result.rows[0];
       const user = new User(
-        row.id,
-        row.email,
-        row.first_name,
-        row.last_name,
-        row.is_active,
-        row.created_at,
-        row.updated_at
+        row.user_id,
+        row.user_email,
+        row.user_firstName,
+        row.user_lastName,
+        row.user_isActive,
+        row.user_createdAt,
+        row.user_updatedAt
       );
       
       const authentication = new UserAuthentication(
-        row.id,
-        row.user_id,
-        row.provider,
-        row.provider_id,
-        row.hashed_password,
-        row.created_at,
-        row.updated_at
+        row.auth_id,
+        row.auth_userId,
+        row.auth_provider,
+        row.auth_providerId,
+        row.auth_hashedPassword,
+        row.auth_isActive,
+        row.auth_createdAt,
+        row.auth_updatedAt
       );
       
       return { user, authentication };

@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { RegisterUserUseCase } from '../../domain/use-cases/RegisterUserUseCase';
 import { LoginUserUseCase } from '../../domain/use-cases/LoginUserUseCase';
 import { UserRepository } from '../../data-access/repositories/UserRepository';
+import { TransactionHelper } from '../../data-access/utils/TransactionHelper';
 import { jwtService } from '../../shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { Context } from '../../shared/types/ValidationTypes';
@@ -12,12 +13,14 @@ export class AuthRoutes {
   private userRepository: UserRepository;
   private registerUserUseCase: RegisterUserUseCase;
   private loginUserUseCase: LoginUserUseCase;
+  private transactionHelper: TransactionHelper;
 
   constructor(pool: Pool) {
     this.router = Router();
     this.userRepository = new UserRepository(pool);
     this.registerUserUseCase = new RegisterUserUseCase(this.userRepository);
     this.loginUserUseCase = new LoginUserUseCase(this.userRepository);
+    this.transactionHelper = new TransactionHelper(pool);
     this.setupRoutes();
   }
 
@@ -55,9 +58,10 @@ export class AuthRoutes {
         return;
       }
 
-      const result = await this.registerUserUseCase.execute(
-        { email, firstName, lastName, password },
-        req.context!
+      const result = await this.transactionHelper.executeUseCase(
+        this.registerUserUseCase,
+        req.context!,
+        { email, firstName, lastName, password }
       );
 
       if (!result.success) {
@@ -73,7 +77,10 @@ export class AuthRoutes {
       }
 
       // Generate tokens for the new user
-      const tokens = jwtService.generateTokenPair(result.user!);
+      const tokens = jwtService.generateTokenPair({
+        userId: result.user!.id!,
+        email: result.user!.email
+      });
 
       res.status(201).json({
         message: 'User registered successfully',
@@ -109,9 +116,10 @@ export class AuthRoutes {
         return;
       }
 
-      const result = await this.loginUserUseCase.execute(
-        { email, password },
-        req.context!
+      const result = await this.transactionHelper.executeUseCase(
+        this.loginUserUseCase,
+        req.context!,
+        { email, password }
       );
 
       if (!result.success) {
@@ -127,7 +135,10 @@ export class AuthRoutes {
       }
 
       // Generate tokens for the user
-      const tokens = jwtService.generateTokenPair(result.user!);
+      const tokens = jwtService.generateTokenPair({
+        userId: result.user!.id!,
+        email: result.user!.email
+      });
 
       res.json({
         message: 'Login successful',
