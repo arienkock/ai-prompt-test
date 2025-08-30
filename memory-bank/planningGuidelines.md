@@ -1,0 +1,29 @@
+Use the following rules to guide your planning process.
+
+- Determine if a request is a domain change (affecting domain model and data access layer), or presentation change (affecting UI and web server code) or both.
+- If it is both, then split the change into two steps: a domain change and a presentation change.
+- Read the architecture documents and ask questions to the user until you know how to satisfy ALL the architecture rules.
+- Every set of related (by entity) UseCases must have their own test suite.
+- For any change that introduces a new entity field, repository method, or DTO field, write the validation and test plan first. This catches gaps early.
+- Use a small set of test data (fixtures) as possible. And re-use them across tests.
+- Make backwards compatible changes if asked:
+  - If you think you're making a breaking change to an API or use case, ask the user if you should create a shadow copy, or if you can work on the feature in-place.
+  - If a shadow copy becomes the live/production version, remove the old component or mark it as deprecated.
+  - For example, when changing the schema
+    - Add new column / table / endpoint / method (backward compatible).
+    - Write migration script.
+    - Update code to write to both old and new.
+    - Switch reads to new.
+    - Remove old.
+- You may mock the repositories, but use the real version of everything else in the domain layer.
+- Test as much of the Web Controller layer as possible without needing to spin up a real web server.
+- Keep logic outside of components as much as possible, so you can test that logic without needing to fake a browser.
+- All tests must pass before a feature is considered complete.
+- There should be a handful (4 or 5) e2e tests scenarios that validate integrations (frontend + backend, or our code + external dependencies) and a happy flow.
+- Do NOT forget to create a new migration when you change the schema.
+- Add an architecture rules check to the end of your plans. If you split the change into a domain and presentation change, then add the architecture rules check to the end of both.
+- Add a task to create a database migration after completing domain changes.
+- During planning, explicitly write down:
+  - What can be tested with mocks only (repositories).
+  - What must be tested end-to-end (integration boundaries).
+- If a change requires both backend and frontend, plan to merge backend first (with safe new code paths), then frontend. This ensures backend changes can be verified independently.
