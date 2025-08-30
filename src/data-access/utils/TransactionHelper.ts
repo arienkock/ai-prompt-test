@@ -39,14 +39,14 @@ export class TransactionHelper {
    * Execute a use case within a transaction
    * This is the required pattern for calling use cases
    */
-  async executeUseCase<TCommand, TResult>(
-    useCase: { execute(context: any, command: TCommand): Promise<TResult> },
+  async executeUseCase<TCommand, TResult, TUseCase extends { execute(context: any, command: TCommand): Promise<TResult> }>(
+    useCaseFactory: (client: PoolClient) => TUseCase,
     context: any,
     command: TCommand
   ): Promise<TResult> {
     return this.executeInTransaction(async (client) => {
-      // The use case will use repository methods that should inherit the transaction
-      // Since the repositories use the same pool, they will participate in the transaction
+      // Create the use case with a repository that uses the transaction client
+      const useCase = useCaseFactory(client);
       return await useCase.execute(context, command);
     });
   }

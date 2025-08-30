@@ -1,25 +1,22 @@
 import { Router, Request, Response } from 'express';
 import { Pool } from 'pg';
-import { RegisterUserUseCase } from '../../domain/use-cases/RegisterUserUseCase';
-import { LoginUserUseCase } from '../../domain/use-cases/LoginUserUseCase';
+import { RegisterUserUseCase, RegisterUserCommand, RegisterUserResponse } from '../../domain/use-cases/RegisterUserUseCase';
+import { LoginUserUseCase, LoginUserCommand, LoginUserResponse } from '../../domain/use-cases/LoginUserUseCase';
 import { UserRepository } from '../../data-access/repositories/UserRepository';
 import { TransactionHelper } from '../../data-access/utils/TransactionHelper';
 import { jwtService } from '../../shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { Context } from '../../shared/types/ValidationTypes';
+import { DomainError, DomainErrorCode } from '../../domain/types/UseCase';
 
 export class AuthRoutes {
   private router: Router;
-  private userRepository: UserRepository;
-  private registerUserUseCase: RegisterUserUseCase;
-  private loginUserUseCase: LoginUserUseCase;
+  private pool: Pool;
   private transactionHelper: TransactionHelper;
 
   constructor(pool: Pool) {
     this.router = Router();
-    this.userRepository = new UserRepository(pool);
-    this.registerUserUseCase = new RegisterUserUseCase(this.userRepository);
-    this.loginUserUseCase = new LoginUserUseCase(this.userRepository);
+    this.pool = pool;
     this.transactionHelper = new TransactionHelper(pool);
     this.setupRoutes();
   }
@@ -58,8 +55,12 @@ export class AuthRoutes {
         return;
       }
 
-      const result = await this.transactionHelper.executeUseCase(
-        this.registerUserUseCase,
+      // Create use case within transaction context
+      const result = await this.transactionHelper.executeUseCase<RegisterUserCommand, RegisterUserResponse, RegisterUserUseCase>(
+        (client) => {
+          const userRepository = new UserRepository(this.pool, client);
+          return new RegisterUserUseCase(userRepository);
+        },
         req.context!,
         { email, firstName, lastName, password }
       );
@@ -68,7 +69,7 @@ export class AuthRoutes {
         res.status(400).json({
           error: 'Registration failed',
           code: 'REGISTRATION_ERROR',
-          errors: result.errors.map(e => ({
+          errors: result.errors.map((e: any) => ({
             field: e.field,
             message: e.message
           }))
@@ -95,6 +96,50 @@ export class AuthRoutes {
       });
     } catch (error: any) {
       console.error('Registration error:', error);
+      
+      // Handle domain errors properly
+      if (error instanceof DomainError) {
+        switch (error.code) {
+          case DomainErrorCode.VALIDATION:
+            res.status(400).json({
+              error: error.message,
+              code: 'VALIDATION_ERROR',
+              details: error.details
+            });
+            return;
+          case DomainErrorCode.AUTHENTICATION:
+            res.status(401).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.AUTHORIZATION:
+            res.status(403).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.NOT_FOUND:
+            res.status(404).json({
+              error: error.message,
+              code: 'NOT_FOUND'
+            });
+            return;
+          case DomainErrorCode.CONFLICT:
+            res.status(409).json({
+              error: error.message,
+              code: 'CONFLICT'
+            });
+            return;
+          default:
+            res.status(500).json({
+              error: 'Internal server error',
+              code: 'INTERNAL_ERROR'
+            });
+            return;
+        }
+      }
+      
       res.status(500).json({
         error: 'Internal server error',
         code: 'INTERNAL_ERROR'
@@ -105,7 +150,7 @@ export class AuthRoutes {
   private async login(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
-
+      console.log(`\n\nBODY ${JSON.stringify({ email, password })}\n\n`)
       // Basic input validation
       if (!email || !password) {
         res.status(400).json({
@@ -116,17 +161,21 @@ export class AuthRoutes {
         return;
       }
 
-      const result = await this.transactionHelper.executeUseCase(
-        this.loginUserUseCase,
+      // Create use case within transaction context
+      const result = await this.transactionHelper.executeUseCase<LoginUserCommand, LoginUserResponse, LoginUserUseCase>(
+        (client) => {
+          const userRepository = new UserRepository(this.pool, client);
+          return new LoginUserUseCase(userRepository);
+        },
         req.context!,
         { email, password }
       );
-
+      console.log(`\n\nresult ${JSON.stringify(result)}\n\n`)
       if (!result.success) {
         res.status(401).json({
           error: 'Login failed',
           code: 'LOGIN_ERROR',
-          errors: result.errors.map(e => ({
+          errors: result.errors.map((e: any) => ({
             field: e.field,
             message: e.message
           }))
@@ -153,6 +202,50 @@ export class AuthRoutes {
       });
     } catch (error: any) {
       console.error('Login error:', error);
+      
+      // Handle domain errors properly
+      if (error instanceof DomainError) {
+        switch (error.code) {
+          case DomainErrorCode.VALIDATION:
+            res.status(400).json({
+              error: error.message,
+              code: 'VALIDATION_ERROR',
+              details: error.details
+            });
+            return;
+          case DomainErrorCode.AUTHENTICATION:
+            res.status(401).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.AUTHORIZATION:
+            res.status(403).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.NOT_FOUND:
+            res.status(404).json({
+              error: error.message,
+              code: 'NOT_FOUND'
+            });
+            return;
+          case DomainErrorCode.CONFLICT:
+            res.status(409).json({
+              error: error.message,
+              code: 'CONFLICT'
+            });
+            return;
+          default:
+            res.status(500).json({
+              error: 'Internal server error',
+              code: 'INTERNAL_ERROR'
+            });
+            return;
+        }
+      }
+      
       res.status(500).json({
         error: 'Internal server error',
         code: 'INTERNAL_ERROR'
@@ -187,6 +280,50 @@ export class AuthRoutes {
       });
     } catch (error: any) {
       console.error('Token refresh error:', error);
+      
+      // Handle domain errors properly
+      if (error instanceof DomainError) {
+        switch (error.code) {
+          case DomainErrorCode.VALIDATION:
+            res.status(400).json({
+              error: error.message,
+              code: 'VALIDATION_ERROR',
+              details: error.details
+            });
+            return;
+          case DomainErrorCode.AUTHENTICATION:
+            res.status(401).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.AUTHORIZATION:
+            res.status(403).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.NOT_FOUND:
+            res.status(404).json({
+              error: error.message,
+              code: 'NOT_FOUND'
+            });
+            return;
+          case DomainErrorCode.CONFLICT:
+            res.status(409).json({
+              error: error.message,
+              code: 'CONFLICT'
+            });
+            return;
+          default:
+            res.status(500).json({
+              error: 'Internal server error',
+              code: 'INTERNAL_ERROR'
+            });
+            return;
+        }
+      }
+      
       res.status(500).json({
         error: 'Internal server error',
         code: 'INTERNAL_ERROR'
@@ -198,7 +335,12 @@ export class AuthRoutes {
     try {
       const userId = req.user!.userId;
       
-      const user = await this.userRepository.findById(userId);
+      // Create repository within transaction context for consistency
+      const user = await this.transactionHelper.executeInTransaction(async (client) => {
+        const userRepository = new UserRepository(this.pool, client);
+        return await userRepository.findById(userId);
+      });
+      
       if (!user) {
         res.status(404).json({
           error: 'User not found',
@@ -220,6 +362,50 @@ export class AuthRoutes {
       });
     } catch (error: any) {
       console.error('Profile fetch error:', error);
+      
+      // Handle domain errors properly
+      if (error instanceof DomainError) {
+        switch (error.code) {
+          case DomainErrorCode.VALIDATION:
+            res.status(400).json({
+              error: error.message,
+              code: 'VALIDATION_ERROR',
+              details: error.details
+            });
+            return;
+          case DomainErrorCode.AUTHENTICATION:
+            res.status(401).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.AUTHORIZATION:
+            res.status(403).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.NOT_FOUND:
+            res.status(404).json({
+              error: error.message,
+              code: 'NOT_FOUND'
+            });
+            return;
+          case DomainErrorCode.CONFLICT:
+            res.status(409).json({
+              error: error.message,
+              code: 'CONFLICT'
+            });
+            return;
+          default:
+            res.status(500).json({
+              error: 'Internal server error',
+              code: 'INTERNAL_ERROR'
+            });
+            return;
+        }
+      }
+      
       res.status(500).json({
         error: 'Internal server error',
         code: 'INTERNAL_ERROR'
@@ -236,6 +422,50 @@ export class AuthRoutes {
       });
     } catch (error: any) {
       console.error('Logout error:', error);
+      
+      // Handle domain errors properly
+      if (error instanceof DomainError) {
+        switch (error.code) {
+          case DomainErrorCode.VALIDATION:
+            res.status(400).json({
+              error: error.message,
+              code: 'VALIDATION_ERROR',
+              details: error.details
+            });
+            return;
+          case DomainErrorCode.AUTHENTICATION:
+            res.status(401).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.AUTHORIZATION:
+            res.status(403).json({
+              error: error.message,
+              code: 'AUTH_ERROR'
+            });
+            return;
+          case DomainErrorCode.NOT_FOUND:
+            res.status(404).json({
+              error: error.message,
+              code: 'NOT_FOUND'
+            });
+            return;
+          case DomainErrorCode.CONFLICT:
+            res.status(409).json({
+              error: error.message,
+              code: 'CONFLICT'
+            });
+            return;
+          default:
+            res.status(500).json({
+              error: 'Internal server error',
+              code: 'INTERNAL_ERROR'
+            });
+            return;
+        }
+      }
+      
       res.status(500).json({
         error: 'Internal server error',
         code: 'INTERNAL_ERROR'

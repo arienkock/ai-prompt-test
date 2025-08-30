@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import path from 'path';
 import { Database } from './data-access/config/database';
 import { MigrationRunner } from './data-access/migrations/MigrationRunner';
@@ -15,6 +16,7 @@ const database = new Database();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('combined'));
 
 // API routes
 app.get('/api/health', (req, res) => {

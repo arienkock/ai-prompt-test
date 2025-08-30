@@ -5,38 +5,38 @@
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
-    firstName VARCHAR(100) NOT NULL,
-    lastName VARCHAR(100) NOT NULL,
-    isActive BOOLEAN NOT NULL DEFAULT true,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    "firstName" VARCHAR(100) NOT NULL,
+    "lastName" VARCHAR(100) NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create user_authentications table (weak entity - must belong to a user)
 CREATE TABLE IF NOT EXISTS user_authentications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    userId UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "userId" UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider VARCHAR(50) NOT NULL,
-    providerId VARCHAR(255) NOT NULL,
-    hashedPassword TEXT NULL, -- Only used for 'email' provider
-    isActive BOOLEAN NOT NULL DEFAULT true,
-    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "providerId" VARCHAR(255) NOT NULL,
+    "hashedPassword" TEXT NULL, -- Only used for 'email' provider
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     -- Ensure unique provider-providerId combination
-    UNIQUE(provider, providerId)
+    UNIQUE(provider, "providerId")
 );
 
 -- Create indexes for common access patterns
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_user_authentications_user_id ON user_authentications(userId);
-CREATE INDEX IF NOT EXISTS idx_user_authentications_provider_id ON user_authentications(provider, providerId);
+CREATE INDEX IF NOT EXISTS idx_user_authentications_user_id ON user_authentications("userId");
+CREATE INDEX IF NOT EXISTS idx_user_authentications_provider_id ON user_authentications(provider, "providerId");
 
 -- Create trigger to update updatedAt timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updatedAt = CURRENT_TIMESTAMP;
+    NEW."updatedAt" = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ language 'plpgsql';

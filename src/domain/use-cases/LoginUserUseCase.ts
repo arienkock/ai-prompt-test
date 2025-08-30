@@ -25,9 +25,12 @@ export class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserResp
 
   async execute(context: Context, command: LoginUserCommand): Promise<LoginUserResponse> {
     try {
+      console.log(`Login attempt for email: ${command.email}`);
+      
       // Validate command/query as per architecture rules
       const commandValidation = this.validateCommand(command);
       if (!commandValidation.valid) {
+        console.log(`Command validation failed: ${JSON.stringify(commandValidation.errors)}`);
         return {
           success: false,
           errors: commandValidation.errors
@@ -35,8 +38,12 @@ export class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserResp
       }
 
       // Find user with email authentication
+      console.log(`Finding user with authentication for email: ${command.email}`);
       const userWithAuth = await this.userRepository.findUserWithAuthentication(command.email, 'email');
+      console.log(`User with auth result: ${JSON.stringify(userWithAuth)}`);
+      
       if (!userWithAuth) {
+        console.log(`No user found with email: ${command.email}`);
         return {
           success: false,
           errors: [new ValidationError('email', 'Invalid email or password')]
@@ -76,6 +83,7 @@ export class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserResp
       };
 
     } catch (error: any) {
+      console.error(error)
       return {
         success: false,
         errors: [new ValidationError('system', 'An unexpected error occurred during login')]

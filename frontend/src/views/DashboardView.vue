@@ -9,7 +9,7 @@
       <div class="profile-card" v-if="user">
         <div class="profile-header">
           <div class="avatar">
-            {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+            {{ (user.firstName?.charAt(0) || '') }}{{ (user.lastName?.charAt(0) || '') }}
           </div>
           <div class="profile-info">
             <h2 class="user-name">{{ user.firstName }} {{ user.lastName }}</h2>
