@@ -1,13 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { Pool } from 'pg';
-import { RegisterUserUseCase, RegisterUserCommand, RegisterUserResponse } from '../../domain/use-cases/RegisterUserUseCase';
-import { LoginUserUseCase, LoginUserCommand, LoginUserResponse } from '../../domain/use-cases/LoginUserUseCase';
+import { RegisterUserUseCase } from '../../domain/use-cases/RegisterUserUseCase';
+import { LoginUserUseCase } from '../../domain/use-cases/LoginUserUseCase';
 import { UserRepository } from '../../data-access/repositories/UserRepository';
 import { TransactionHelper } from '../../data-access/utils/TransactionHelper';
 import { jwtService } from '../../shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { Context } from '../../shared/types/ValidationTypes';
 import { DomainError, DomainErrorCode } from '../../domain/types/UseCase';
+import { RegisterUserCommandDto, RegisterUserResponseDto, LoginUserCommandDto, LoginUserResponseDto } from '../../domain/types/Dtos';
+import { ValidationError } from '../../shared/types/ValidationTypes';
 
 export class AuthRoutes {
   private router: Router;
@@ -56,7 +58,7 @@ export class AuthRoutes {
       }
 
       // Create use case within transaction context
-      const result = await this.transactionHelper.executeUseCase<RegisterUserCommand, RegisterUserResponse, RegisterUserUseCase>(
+      const result = await this.transactionHelper.executeUseCase<RegisterUserCommandDto, RegisterUserResponseDto, RegisterUserUseCase>(
         (client) => {
           const userRepository = new UserRepository(this.pool, client);
           return new RegisterUserUseCase(userRepository);
@@ -65,37 +67,37 @@ export class AuthRoutes {
         { email, firstName, lastName, password }
       );
 
-      if (!result.success) {
-        res.status(400).json({
-          error: 'Registration failed',
-          code: 'REGISTRATION_ERROR',
-          errors: result.errors.map((e: any) => ({
-            field: e.field,
-            message: e.message
-          }))
-        });
-        return;
-      }
-
       // Generate tokens for the new user
       const tokens = jwtService.generateTokenPair({
-        userId: result.user!.id!,
-        email: result.user!.email
+        userId: result.user.id,
+        email: result.user.email
       });
 
       res.status(201).json({
-        message: 'User registered successfully',
-        user: {
-          id: result.user!.id,
-          email: result.user!.email,
-          firstName: result.user!.firstName,
-          lastName: result.user!.lastName,
-          isActive: result.user!.isActive
-        },
+        message: result.message,
+        user: result.user,
         ...tokens
       });
     } catch (error: any) {
       console.error('Registration error:', error);
+      
+      // Handle validation errors
+      if (error.message && error.message.includes('ValidationError')) {
+        try {
+          const errors = JSON.parse(error.message);
+          res.status(400).json({
+            error: 'Registration failed',
+            code: 'REGISTRATION_ERROR',
+            errors: errors.map((e: any) => ({
+              field: e.field,
+              message: e.message
+            }))
+          });
+          return;
+        } catch (parseError) {
+          // If parsing fails, treat as general error
+        }
+      }
       
       // Handle domain errors properly
       if (error instanceof DomainError) {
@@ -162,7 +164,7 @@ export class AuthRoutes {
       }
 
       // Create use case within transaction context
-      const result = await this.transactionHelper.executeUseCase<LoginUserCommand, LoginUserResponse, LoginUserUseCase>(
+      const result = await this.transactionHelper.executeUseCase<LoginUserCommandDto, LoginUserResponseDto, LoginUserUseCase>(
         (client) => {
           const userRepository = new UserRepository(this.pool, client);
           return new LoginUserUseCase(userRepository);
@@ -171,37 +173,40 @@ export class AuthRoutes {
         { email, password }
       );
       console.log(`\n\nresult ${JSON.stringify(result)}\n\n`)
-      if (!result.success) {
-        res.status(401).json({
-          error: 'Login failed',
-          code: 'LOGIN_ERROR',
-          errors: result.errors.map((e: any) => ({
-            field: e.field,
-            message: e.message
-          }))
-        });
-        return;
-      }
 
       // Generate tokens for the user
       const tokens = jwtService.generateTokenPair({
-        userId: result.user!.id!,
-        email: result.user!.email
+        userId: result.user.id,
+        email: result.user.email
       });
 
       res.json({
-        message: 'Login successful',
-        user: {
-          id: result.user!.id,
-          email: result.user!.email,
-          firstName: result.user!.firstName,
-          lastName: result.user!.lastName,
-          isActive: result.user!.isActive
-        },
+        message: result.message,
+        user: result.user,
         ...tokens
       });
     } catch (error: any) {
       console.error('Login error:', error);
+      
+      // Handle validation errors
+      if (error.message && error.message.includes('ValidationError')) {
+        try {
+          const errors = JSON.parse(error.message);
+          // Check if it's an authentication error
+          const isAuthError = errors.some((e: any) => e.field === 'email' || e.field === 'password' || e.field === 'account');
+          res.status(isAuthError ? 401 : 400).json({
+            error: 'Login failed',
+            code: 'LOGIN_ERROR',
+            errors: errors.map((e: any) => ({
+              field: e.field,
+              message: e.message
+            }))
+          });
+          return;
+        } catch (parseError) {
+          // If parsing fails, treat as general error
+        }
+      }
       
       // Handle domain errors properly
       if (error instanceof DomainError) {

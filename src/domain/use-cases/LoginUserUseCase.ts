@@ -3,38 +3,24 @@ import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase, DomainError, DomainErrorCode } from '../types/UseCase';
+import { UseCase } from '../types/UseCase';
+import { LoginUserCommandDto, LoginUserResponseDto } from '../types/Dtos';
 
-export interface LoginUserCommand {
-  email: string;
-  password: string;
-}
-
-export interface LoginUserResponse {
-  success: boolean;
-  user?: User;
-  errors: ValidationError[];
-}
-
-export class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserResponse> {
+export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserResponseDto> {
   private userRepository: IUserRepository;
 
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
   }
 
-  async execute(context: Context, command: LoginUserCommand): Promise<LoginUserResponse> {
+  async execute(context: Context, command: LoginUserCommandDto): Promise<LoginUserResponseDto> {
     try {
       console.log(`Login attempt for email: ${command.email}`);
       
       // Validate command/query as per architecture rules
       const commandValidation = this.validateCommand(command);
       if (!commandValidation.valid) {
-        console.log(`Command validation failed: ${JSON.stringify(commandValidation.errors)}`);
-        return {
-          success: false,
-          errors: commandValidation.errors
-        };
+        throw new Error(JSON.stringify(commandValidation.errors));
       }
 
       // Find user with email authentication
@@ -44,50 +30,44 @@ export class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserResp
       
       if (!userWithAuth) {
         console.log(`No user found with email: ${command.email}`);
-        return {
-          success: false,
-          errors: [new ValidationError('email', 'Invalid email or password')]
-        };
+        throw new Error(JSON.stringify([new ValidationError('email', 'Invalid email or password')]));
       }
 
       const { user, authentication } = userWithAuth;
 
       // Check if user is active
       if (!user.isActive) {
-        return {
-          success: false,
-          errors: [new ValidationError('account', 'Account is deactivated')]
-        };
+        throw new Error(JSON.stringify([new ValidationError('account', 'Account is deactivated')]));
       }
 
       // Verify password
       if (!authentication.hashedPassword) {
-        return {
-          success: false,
-          errors: [new ValidationError('password', 'Invalid email or password')]
-        };
+        throw new Error(JSON.stringify([new ValidationError('password', 'Invalid email or password')]));
       }
 
       const isPasswordValid = await bcrypt.compare(command.password, authentication.hashedPassword);
       if (!isPasswordValid) {
-        return {
-          success: false,
-          errors: [new ValidationError('password', 'Invalid email or password')]
-        };
+        throw new Error(JSON.stringify([new ValidationError('password', 'Invalid email or password')]));
       }
 
+      // Return DTO response
       return {
-        success: true,
-        user,
-        errors: []
+        message: 'Login successful',
+        user: {
+          id: user.id!,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isActive: user.isActive,
+          createdAt: user.createdAt?.toISOString(),
+          updatedAt: user.updatedAt?.toISOString()
+        },
+        accessToken: '', // These will be filled by the web controller
+        refreshToken: ''
       };
 
     } catch (error: any) {
-      console.error(error)
-      return {
-        success: false,
-        errors: [new ValidationError('system', 'An unexpected error occurred during login')]
-      };
+      throw new Error(error.message || 'An unexpected error occurred during login');
     }
   }
 
@@ -95,7 +75,7 @@ export class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserResp
    * Validate command input as per architecture rules
    * Command/Query validation must be stateless and not require repository usage
    */
-  private validateCommand(command: LoginUserCommand): ValidationResult {
+  private validateCommand(command: LoginUserCommandDto): ValidationResult {
     const errors: ValidationError[] = [];
 
     if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {

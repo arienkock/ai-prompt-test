@@ -32,13 +32,14 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string, opts?: { includeRelations?: string[] }): Promise<User | null> {
     const client = await this.getClient();
     try {
-      const result = await client.query(
-        'SELECT id, email, "firstName", "lastName", "isActive", "createdAt", "updatedAt" FROM users WHERE id = $1',
-        [id]
-      );
+      // Base query
+      let query = 'SELECT id, email, "firstName", "lastName", "isActive", "createdAt", "updatedAt" FROM users WHERE id = $1';
+      const params: any[] = [id];
+      
+      const result = await client.query(query, params);
       
       if (result.rows.length === 0) {
         return null;

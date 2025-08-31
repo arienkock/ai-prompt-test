@@ -4,55 +4,34 @@ import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase, DomainError, DomainErrorCode } from '../types/UseCase';
+import { UseCase } from '../types/UseCase';
+import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
 
-export interface RegisterUserCommand {
-  email: string;
-  firstName: string;
-  lastName: string;
-  password: string;
-}
-
-export interface RegisterUserResponse {
-  success: boolean;
-  user?: User;
-  errors: ValidationError[];
-}
-
-export class RegisterUserUseCase implements UseCase<RegisterUserCommand, RegisterUserResponse> {
+export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, RegisterUserResponseDto> {
   private userRepository: IUserRepository;
 
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
   }
 
-  async execute(context: Context, command: RegisterUserCommand): Promise<RegisterUserResponse> {
+  async execute(context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> {
     try {
       // Validate command/query as per architecture rules
       const commandValidation = this.validateCommand(command);
       if (!commandValidation.valid) {
-        return {
-          success: false,
-          errors: commandValidation.errors
-        };
+        throw new Error(JSON.stringify(commandValidation.errors));
       }
 
       // Validate password (was missing from execution flow)
       const passwordValidation = this.validatePassword(command.password);
       if (!passwordValidation.valid) {
-        return {
-          success: false,
-          errors: passwordValidation.errors
-        };
+        throw new Error(JSON.stringify(passwordValidation.errors));
       }
 
       // Check if user with email already exists
       const existingUser = await this.userRepository.findByEmail(command.email);
       if (existingUser) {
-        return {
-          success: false,
-          errors: [new ValidationError('email', 'User with this email already exists')]
-        };
+        throw new Error(JSON.stringify([new ValidationError('email', 'User with this email already exists')]));
       }
 
       // Create user entity
@@ -62,25 +41,21 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommand, Registe
         command.email.toLowerCase(), // Ensure consistent lowercase email
         command.firstName,
         command.lastName,
-        true // isActive = true by default
+        true, // isActive = true by default
+        new Date(), // createdAt
+        new Date()  // updatedAt
       );
 
       // Validate user entity as per architecture rules
       const userValidation = user.validate();
       if (!userValidation.valid) {
-        return {
-          success: false,
-          errors: userValidation.errors
-        };
+        throw new Error(JSON.stringify(userValidation.errors));
       }
 
       // Create user in database
       const createUserResult = await this.userRepository.create(user);
       if (!createUserResult.valid) {
-        return {
-          success: false,
-          errors: createUserResult.errors
-        };
+        throw new Error(JSON.stringify(createUserResult.errors));
       }
 
       // Hash password
@@ -94,7 +69,10 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommand, Registe
         userId,
         'email',
         command.email.toLowerCase(),
-        hashedPassword
+        hashedPassword,
+        true, // isActive = true by default
+        new Date(), // createdAt
+        new Date()  // updatedAt
       );
 
       // Validate authentication entity
@@ -102,10 +80,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommand, Registe
       if (!authValidation.valid) {
         // If authentication fails, we should clean up the created user
         await this.userRepository.delete(userId);
-        return {
-          success: false,
-          errors: authValidation.errors
-        };
+        throw new Error(JSON.stringify(authValidation.errors));
       }
 
       // Create authentication in database
@@ -113,23 +88,27 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommand, Registe
       if (!createAuthResult.valid) {
         // If authentication creation fails, clean up the user
         await this.userRepository.delete(userId);
-        return {
-          success: false,
-          errors: createAuthResult.errors
-        };
+        throw new Error(JSON.stringify(createAuthResult.errors));
       }
 
+      // Return DTO response
       return {
-        success: true,
-        user,
-        errors: []
+        message: 'User registered successfully',
+        user: {
+          id: user.id!,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isActive: user.isActive,
+          createdAt: user.createdAt?.toISOString(),
+          updatedAt: user.updatedAt?.toISOString()
+        },
+        accessToken: '', // These will be filled by the web controller
+        refreshToken: ''
       };
 
     } catch (error: any) {
-      return {
-        success: false,
-        errors: [new ValidationError('system', 'An unexpected error occurred during registration')]
-      };
+      throw new Error(error.message || 'An unexpected error occurred during registration');
     }
   }
 
@@ -137,7 +116,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommand, Registe
    * Validate command input as per architecture rules
    * Command/Query validation must be stateless and not require repository usage
    */
-  private validateCommand(command: RegisterUserCommand): ValidationResult {
+  private validateCommand(command: RegisterUserCommandDto): ValidationResult {
     const errors: ValidationError[] = [];
 
     if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {

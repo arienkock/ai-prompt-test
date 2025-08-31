@@ -4,7 +4,7 @@ import { ValidationResult, PaginationParams } from '../../shared/types/Validatio
 
 export interface IUserRepository {
   // User operations
-  findById(id: string): Promise<User | null>;
+  findById(id: string, opts?: { includeRelations?: string[] }): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   create(user: User): Promise<ValidationResult>;
   update(user: User): Promise<ValidationResult>;
