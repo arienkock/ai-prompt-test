@@ -54,6 +54,7 @@ If rules in this document seem to contradict or conflict: ASK THE USER!
 - Calling a use case outside of a transaction callback IS AN ERROR. Since the first (top level) use case MUST be called within a transaction, any other use cases in the call tree are implicitly part of the same transaction.
 - Command and query objects MUST NOT use / reference entity types. Instead they MUST use DTO types that have a subset of the fields of the entities. Reason: protect internal entity fields from being overridden.
 - Mapping logic between DTO and entity types may reside in helper functions near (in the same file as, or even private methods) the use cases, unless the mapping logic is re-usable (e.g. pagination parameters and pagination response metadata). In the latter case the mapping code MUST not be duplicated.
+- Mapping DTOs to entities MUST copy fields by explicitly by name. Using object spread or other dynamic property copying is STRICTLY FORBIDDEN. Reason: accepting user-provided undeclared properties at runtime is a security risk.
 - If you know that a field is read-only, it should be returned by the use case but never accepted in the DTO.
 - If you are unsure if a field needs to be part of DTO or not: ASK THE USER!
 - A weak entity cannot exist on its own. Weak entities MUST have at least one non-nullable relationship. (Example: a profile MUST belong to a user)
