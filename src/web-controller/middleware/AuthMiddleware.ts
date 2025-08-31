@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { jwtService } from '../../shared/services/JwtService';
 import { Context } from '../../shared/types/ValidationTypes';
+import { AuthenticationDomainError } from '../../domain/types/UseCase';
 
 // Extend Express Request to include user context
 declare global {
@@ -18,6 +19,7 @@ declare global {
 export class AuthMiddleware {
   /**
    * Middleware to authenticate requests using JWT tokens
+   * Now throws domain errors instead of creating responses
    */
   static authenticate(req: Request, res: Response, next: NextFunction): void {
     try {
@@ -25,20 +27,12 @@ export class AuthMiddleware {
       const token = jwtService.extractTokenFromHeader(authHeader);
 
       if (!token) {
-        res.status(401).json({
-          error: 'Authentication required',
-          code: 'MISSING_TOKEN'
-        });
-        return;
+        throw new AuthenticationDomainError('Authentication required');
       }
 
       const payload = jwtService.verifyAccessToken(token);
       if (!payload) {
-        res.status(401).json({
-          error: 'Invalid or expired token',
-          code: 'INVALID_TOKEN'
-        });
-        return;
+        throw new AuthenticationDomainError('Invalid or expired token');
       }
 
       // Add user information to request
@@ -52,10 +46,8 @@ export class AuthMiddleware {
 
       next();
     } catch (error) {
-      res.status(500).json({
-        error: 'Authentication error',
-        code: 'AUTH_ERROR'
-      });
+      // Pass any error to the unified error handler
+      next(error);
     }
   }
 

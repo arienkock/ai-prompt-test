@@ -4,7 +4,7 @@ import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase } from '../types/UseCase';
+import { UseCase, ValidationDomainError, ConflictDomainError } from '../types/UseCase';
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
 
 export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, RegisterUserResponseDto> {
@@ -13,103 +13,115 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
   }
+  isRead(): Boolean {
+    return false
+  }
+  isPublic(): Boolean {
+    return true
+  }
 
   async execute(context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> {
-    try {
-      // Validate command/query as per architecture rules
-      const commandValidation = this.validateCommand(command);
-      if (!commandValidation.valid) {
-        throw new Error(JSON.stringify(commandValidation.errors));
-      }
-
-      // Validate password (was missing from execution flow)
-      const passwordValidation = this.validatePassword(command.password);
-      if (!passwordValidation.valid) {
-        throw new Error(JSON.stringify(passwordValidation.errors));
-      }
-
-      // Check if user with email already exists
-      const existingUser = await this.userRepository.findByEmail(command.email);
-      if (existingUser) {
-        throw new Error(JSON.stringify([new ValidationError('email', 'User with this email already exists')]));
-      }
-
-      // Create user entity
-      const userId = uuidv4();
-      const user = new User(
-        userId,
-        command.email.toLowerCase(), // Ensure consistent lowercase email
-        command.firstName,
-        command.lastName,
-        true, // isActive = true by default
-        new Date(), // createdAt
-        new Date()  // updatedAt
+    // Validate command/query as per architecture rules
+    const commandValidation = this.validateCommand(command);
+    if (!commandValidation.valid) {
+      throw new ValidationDomainError(
+        'Invalid registration command',
+        commandValidation.errors
       );
-
-      // Validate user entity as per architecture rules
-      const userValidation = user.validate();
-      if (!userValidation.valid) {
-        throw new Error(JSON.stringify(userValidation.errors));
-      }
-
-      // Create user in database
-      const createUserResult = await this.userRepository.create(user);
-      if (!createUserResult.valid) {
-        throw new Error(JSON.stringify(createUserResult.errors));
-      }
-
-      // Hash password
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(command.password, saltRounds);
-
-      // Create user authentication entity
-      const authId = uuidv4();
-      const userAuth = new UserAuthentication(
-        authId,
-        userId,
-        'email',
-        command.email.toLowerCase(),
-        hashedPassword,
-        true, // isActive = true by default
-        new Date(), // createdAt
-        new Date()  // updatedAt
-      );
-
-      // Validate authentication entity
-      const authValidation = userAuth.validate();
-      if (!authValidation.valid) {
-        // If authentication fails, we should clean up the created user
-        await this.userRepository.delete(userId);
-        throw new Error(JSON.stringify(authValidation.errors));
-      }
-
-      // Create authentication in database
-      const createAuthResult = await this.userRepository.createAuthentication(userAuth);
-      if (!createAuthResult.valid) {
-        // If authentication creation fails, clean up the user
-        await this.userRepository.delete(userId);
-        throw new Error(JSON.stringify(createAuthResult.errors));
-      }
-
-      // Return DTO response
-      return {
-        message: 'User registered successfully',
-        user: {
-          id: user.id!,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          isActive: user.isActive,
-          createdAt: user.createdAt?.toISOString(),
-          updatedAt: user.updatedAt?.toISOString()
-        },
-        accessToken: '', // These will be filled by the web controller
-        refreshToken: ''
-      };
-
-    } catch (error: any) {
-      throw new Error(error.message || 'An unexpected error occurred during registration');
     }
+
+    // Check if user with email already exists
+    const existingUser = await this.userRepository.findByEmail(command.email);
+    if (existingUser) {
+      throw new ConflictDomainError(
+        'User with this email already exists'
+      );
+    }
+
+    // Create user entity
+    const userId = uuidv4();
+    const user = new User(
+      userId,
+      command.email.toLowerCase(), // Ensure consistent lowercase email
+      command.firstName,
+      command.lastName,
+      true, // isActive = true by default
+      new Date(), // createdAt
+      new Date()  // updatedAt
+    );
+
+    // Validate user entity as per architecture rules
+    const userValidation = user.validate();
+    if (!userValidation.valid) {
+      throw new ValidationDomainError(
+        'User entity validation failed',
+        userValidation.errors
+      );
+    }
+
+    // Create user in database
+    const createUserResult = await this.userRepository.create(user);
+    if (!createUserResult.valid) {
+      throw new ValidationDomainError(
+        'User creation failed',
+        createUserResult.errors
+      );
+    }
+
+    // Hash password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(command.password, saltRounds);
+
+    // Create user authentication entity
+    const authId = uuidv4();
+    const userAuth = new UserAuthentication(
+      authId,
+      userId,
+      'email',
+      command.email.toLowerCase(),
+      hashedPassword,
+      true, // isActive = true by default
+      new Date(), // createdAt
+      new Date()  // updatedAt
+    );
+
+    // Validate authentication entity
+    const authValidation = userAuth.validate();
+    if (!authValidation.valid) {
+      // If authentication fails, we should clean up the created user
+      await this.userRepository.delete(userId);
+      throw new ValidationDomainError(
+        'User authentication validation failed',
+        authValidation.errors
+      );
+    }
+
+    // Create authentication in database
+    const createAuthResult = await this.userRepository.createAuthentication(userAuth);
+    if (!createAuthResult.valid) {
+      // If authentication creation fails, clean up the user
+      await this.userRepository.delete(userId);
+      throw new ValidationDomainError(
+        'Authentication creation failed',
+        createAuthResult.errors
+      );
+    }
+
+    // Return DTO response
+    return {
+      message: 'User registered successfully',
+      user: {
+        id: user.id!,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isActive: user.isActive,
+        createdAt: user.createdAt?.toISOString(),
+        updatedAt: user.updatedAt?.toISOString()
+      },
+      accessToken: '', // These will be filled by the web controller
+      refreshToken: ''
+    };
   }
 
   /**
@@ -140,37 +152,13 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     if (!command.password || typeof command.password !== 'string') {
       errors.push(new ValidationError('password', 'Password is required'));
     }
-
-    return new ValidationResult(errors.length === 0, errors);
-  }
-
-  /**
-   * Validate password complexity - stateless validation as per architecture rules
-   */
-  private validatePassword(password: string): ValidationResult {
-    const errors: ValidationError[] = [];
-
-    if (!password || password.length < 8) {
+    
+    if (!command.password || command.password.length < 8) {
       errors.push(new ValidationError('password', 'Password must be at least 8 characters long'));
     }
 
-    if (password.length > 128) {
+    if (command.password.length > 128) {
       errors.push(new ValidationError('password', 'Password must be less than 128 characters'));
-    }
-
-    // Check for at least one uppercase letter
-    if (!/[A-Z]/.test(password)) {
-      errors.push(new ValidationError('password', 'Password must contain at least one uppercase letter'));
-    }
-
-    // Check for at least one lowercase letter
-    if (!/[a-z]/.test(password)) {
-      errors.push(new ValidationError('password', 'Password must contain at least one lowercase letter'));
-    }
-
-    // Check for at least one number
-    if (!/\d/.test(password)) {
-      errors.push(new ValidationError('password', 'Password must contain at least one number'));
     }
 
     return new ValidationResult(errors.length === 0, errors);

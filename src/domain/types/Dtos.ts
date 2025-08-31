@@ -45,7 +45,12 @@ export interface LoginUserResponseDto {
   refreshToken: string;
 }
 
+// Get user profile query DTO
+export interface GetUserProfileQueryDto {
+  userId: string;
+}
+
 // Profile response DTO
-export interface ProfileResponseDto {
+export interface GetUserProfileResponseDto {
   user: UserDto;
 }
