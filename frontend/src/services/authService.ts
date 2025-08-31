@@ -20,6 +20,7 @@ export interface User {
   firstName: string;
   lastName: string;
   isActive: boolean;
+  isAdmin: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -145,6 +146,15 @@ class AuthService {
       this.setRefreshToken(response.data.refreshToken);
     } catch (error: any) {
       this.logout();
+      throw this.handleApiError(error);
+    }
+  }
+
+  async deleteUser(userId: string): Promise<{ message: string }> {
+    try {
+      const response = await axios.delete<{ message: string }>(`${API_BASE_URL}/users/${userId}`);
+      return response.data;
+    } catch (error: any) {
       throw this.handleApiError(error);
     }
   }

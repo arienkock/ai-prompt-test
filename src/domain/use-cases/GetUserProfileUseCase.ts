@@ -45,6 +45,7 @@ export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, Ge
         firstName: user.firstName,
         lastName: user.lastName,
         isActive: user.isActive,
+        isAdmin: user.isAdmin,
         createdAt: user.createdAt?.toISOString(),
         updatedAt: user.updatedAt?.toISOString()
       }

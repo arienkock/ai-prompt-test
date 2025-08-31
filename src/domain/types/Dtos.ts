@@ -11,6 +11,7 @@ export interface UserDto {
   firstName: string;
   lastName: string;
   isActive: boolean;
+  isAdmin: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -53,4 +54,14 @@ export interface GetUserProfileQueryDto {
 // Profile response DTO
 export interface GetUserProfileResponseDto {
   user: UserDto;
+}
+
+// Delete user command DTO
+export interface DeleteUserCommandDto {
+  userId: string;
+}
+
+// Delete user response DTO
+export interface DeleteUserResponseDto {
+  message: string;
 }

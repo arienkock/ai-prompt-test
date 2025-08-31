@@ -15,6 +15,7 @@ export class User extends Entity {
     public readonly firstName: string,
     public readonly lastName: string,
     public readonly isActive: boolean = true,
+    public readonly isAdmin: boolean = false,
     public readonly createdAt?: Date,
     public readonly updatedAt?: Date
   ) {
@@ -68,6 +69,11 @@ export class User extends Entity {
       errors.push(new ValidationError('isActive', 'isActive must be a boolean value'));
     }
 
+    // isAdmin validation
+    if (typeof this.isAdmin !== 'boolean') {
+      errors.push(new ValidationError('isAdmin', 'isAdmin must be a boolean value'));
+    }
+
     return errors.length === 0 
       ? ValidationResult.success() 
       : ValidationResult.failure(errors);
@@ -93,8 +99,8 @@ export class User extends Entity {
   /**
    * Static factory method
    */
-  static create(email: string, firstName: string, lastName: string): User {
-    return new User(undefined, email, firstName, lastName);
+  static create(email: string, firstName: string, lastName: string, isAdmin: boolean = false): User {
+    return new User(undefined, email, firstName, lastName, true, isAdmin);
   }
 
   /**
@@ -106,6 +112,7 @@ export class User extends Entity {
     firstName: string;
     lastName: string;
     isActive: boolean;
+    isAdmin: boolean;
     createdAt?: Date;
     updatedAt?: Date;
   }): User {
@@ -115,6 +122,7 @@ export class User extends Entity {
       data.firstName,
       data.lastName,
       data.isActive,
+      data.isAdmin,
       data.createdAt,
       data.updatedAt
     );

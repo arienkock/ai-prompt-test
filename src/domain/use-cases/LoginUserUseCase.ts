@@ -67,6 +67,7 @@ export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserR
         firstName: user.firstName,
         lastName: user.lastName,
         isActive: user.isActive,
+        isAdmin: user.isAdmin,
         createdAt: user.createdAt?.toISOString(),
         updatedAt: user.updatedAt?.toISOString()
       },

@@ -36,7 +36,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       // Base query
-      let query = 'SELECT id, email, "firstName", "lastName", "isActive", "createdAt", "updatedAt" FROM users WHERE id = $1';
+      let query = 'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users WHERE id = $1';
       const params: any[] = [id];
       
       const result = await client.query(query, params);
@@ -52,6 +52,7 @@ export class UserRepository implements IUserRepository {
         row.firstName,
         row.lastName,
         row.isActive,
+        row.isAdmin,
         row.createdAt,
         row.updatedAt
       );
@@ -64,7 +65,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        'SELECT id, email, "firstName", "lastName", "isActive", "createdAt", "updatedAt" FROM users WHERE email = $1',
+        'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users WHERE email = $1',
         [email.toLowerCase()]
       );
       
@@ -79,6 +80,7 @@ export class UserRepository implements IUserRepository {
         row.firstName,
         row.lastName,
         row.isActive,
+        row.isAdmin,
         row.createdAt,
         row.updatedAt
       );
@@ -96,14 +98,15 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `INSERT INTO users (id, email, "firstName", "lastName", "isActive", "createdAt", "updatedAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        `INSERT INTO users (id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt") 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
         [
           user.id,
           user.email.toLowerCase(),
           user.firstName,
           user.lastName,
           user.isActive,
+          user.isAdmin,
           new Date(),
           new Date()
         ]
@@ -141,7 +144,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `UPDATE users SET email = $2, "firstName" = $3, "lastName" = $4, "isActive" = $5, "updatedAt" = $6 
+        `UPDATE users SET email = $2, "firstName" = $3, "lastName" = $4, "isActive" = $5, "isAdmin" = $6, "updatedAt" = $7 
          WHERE id = $1`,
         [
           user.id,
@@ -149,6 +152,7 @@ export class UserRepository implements IUserRepository {
           user.firstName,
           user.lastName,
           user.isActive,
+          user.isAdmin,
           new Date()
         ]
       );
@@ -205,7 +209,7 @@ export class UserRepository implements IUserRepository {
     try {
       const offset = (pagination.page - 1) * pagination.pageSize;
       const result = await client.query(
-        'SELECT id, email, "firstName", "lastName", "isActive", "createdAt", "updatedAt" FROM users ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2',
+        'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2',
         [pagination.pageSize, offset]
       );
       
@@ -215,6 +219,7 @@ export class UserRepository implements IUserRepository {
         row.firstName,
         row.lastName,
         row.isActive,
+        row.isAdmin,
         row.createdAt,
         row.updatedAt
       ));
@@ -397,7 +402,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT u.id as "user_id", u.email as "user_email", u."firstName" as "user_firstName", u."lastName" as "user_lastName", u."isActive" as "user_isActive", u."createdAt" as "user_createdAt", u."updatedAt" as "user_updatedAt",
+        `SELECT u.id as "user_id", u.email as "user_email", u."firstName" as "user_firstName", u."lastName" as "user_lastName", u."isActive" as "user_isActive", u."isAdmin" as "user_isAdmin", u."createdAt" as "user_createdAt", u."updatedAt" as "user_updatedAt",
          ua.id as "auth_id", ua."userId" as "auth_userId", ua.provider as "auth_provider", ua."providerId" as "auth_providerId", ua."hashedPassword" as "auth_hashedPassword", ua."isActive" as "auth_isActive", ua."createdAt" as "auth_createdAt", ua."updatedAt" as "auth_updatedAt"
          FROM users u 
          JOIN user_authentications ua ON u.id = ua."userId" 
@@ -419,6 +424,7 @@ export class UserRepository implements IUserRepository {
         row.user_firstName,
         row.user_lastName,
         row.user_isActive,
+        row.user_isAdmin,
         row.user_createdAt,
         row.user_updatedAt
       );

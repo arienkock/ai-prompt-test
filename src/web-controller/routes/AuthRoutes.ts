@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { RegisterUserUseCase } from '../../domain/use-cases/RegisterUserUseCase';
 import { LoginUserUseCase } from '../../domain/use-cases/LoginUserUseCase';
 import { GetUserProfileUseCase } from '../../domain/use-cases/GetUserProfileUseCase';
+import { DeleteUserUseCase } from '../../domain/use-cases/DeleteUserUseCase';
 import { UserRepository } from '../../data-access/repositories/UserRepository';
 import { jwtService } from '../../shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
@@ -14,7 +15,9 @@ import {
   LoginUserCommandDto, 
   LoginUserResponseDto,
   GetUserProfileQueryDto,
-  GetUserProfileResponseDto 
+  GetUserProfileResponseDto,
+  DeleteUserCommandDto,
+  DeleteUserResponseDto 
 } from '../../domain/types/Dtos';
 import { routeToUseCase, wrapAsync } from '../utils/RouteUtils';
 
@@ -87,6 +90,25 @@ export class AuthRoutes {
         return new GetUserProfileUseCase(userRepository);
       }
     );
+
+    // Delete user route - private write operation
+    this.router.delete('/users/:userId', AuthMiddleware.authenticate, wrapAsync(async (req: Request, res: Response, next: NextFunction) => {
+      const { userId } = req.params;
+      const command: DeleteUserCommandDto = { userId };
+
+      // Execute use case within transaction context
+      const transactionHelper = new (await import('../../data-access/utils/TransactionHelper')).TransactionHelper(this.pool);
+      const result = await transactionHelper.executeUseCase<DeleteUserCommandDto, DeleteUserResponseDto, DeleteUserUseCase>(
+        (client) => {
+          const userRepository = new UserRepository(this.pool, client);
+          return new DeleteUserUseCase(userRepository);
+        },
+        req.context!,
+        command
+      );
+
+      res.json(result);
+    }));
 
     // Non-use-case routes
     this.router.post('/refresh', AuthMiddleware.requireContext, wrapAsync(this.refresh.bind(this)));
