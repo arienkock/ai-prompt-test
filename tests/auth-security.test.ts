@@ -5,33 +5,26 @@ import { RegisterUserCommandDto, LoginUserCommandDto } from '../src/domain/types
 
 describe('Authentication Security Tests', () => {
   let testUserData: RegisterUserCommandDto;
-  let registeredUserEmail: string;
 
   beforeAll(async () => {
-    // Initialize test database
-    await TestUtils.initializeTestDatabase();
+    // Ensure we're in test environment
+    process.env.NODE_ENV = 'test';
     
-    // Clean up any existing test users
-    await TestUtils.cleanupTestUsers();
+    // Initialize test database (creates fresh database)
+    await TestUtils.initializeTestDatabase();
   });
 
   afterAll(async () => {
-    // Clean up test users and close database connections
-    await TestUtils.cleanupTestUsers();
-    await TestUtils.closeTestDatabase();
+    // Drop the entire test database for complete cleanup
+    await TestUtils.dropTestDatabase();
+    
+    // Note: Database connection cleanup is handled in global setup
+    // to avoid issues with multiple test files
   });
 
   beforeEach(() => {
     // Generate unique user data for each test
     testUserData = TestUtils.generateUniqueUserData();
-  });
-
-  afterEach(async () => {
-    // Clean up any users created during tests
-    if (registeredUserEmail) {
-      await TestUtils.deleteUserByEmail(registeredUserEmail);
-      registeredUserEmail = '';
-    }
   });
 
   describe('POST /api/auth/register', () => {
@@ -40,9 +33,6 @@ describe('Authentication Security Tests', () => {
         .post('/api/auth/register')
         .send(testUserData)
         .expect(201);
-
-      // Store email for cleanup
-      registeredUserEmail = testUserData.email;
 
       // Verify response structure
       expect(response.body).toHaveProperty('message');
@@ -75,8 +65,6 @@ describe('Authentication Security Tests', () => {
         .send(testUserData)
         .expect(201);
 
-      registeredUserEmail = testUserData.email;
-
       // Second registration with same email - should fail
       const response = await request(app)
         .post('/api/auth/register')
@@ -100,8 +88,6 @@ describe('Authentication Security Tests', () => {
         .post('/api/auth/register')
         .send(testUserData)
         .expect(201);
-      
-      registeredUserEmail = testUserData.email;
     });
 
     it('should successfully login with valid credentials (happy path)', async () => {

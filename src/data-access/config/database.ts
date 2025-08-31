@@ -1,23 +1,26 @@
 import { Pool, PoolClient } from 'pg';
 
 // Database configuration from docker-compose.yml
-const dbConfig = {
-  host: 'localhost',
-  port: 5432,
-  database: 'postgres',
-  user: 'postgres',
-  password: 'postgres',
-  // Connection pool settings
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+const getDbConfig = () => {
+  const isTest = process.env.NODE_ENV === 'test';
+  return {
+    host: 'localhost',
+    port: 5432,
+    database: isTest ? 'postgres_test' : 'postgres',
+    user: 'postgres',
+    password: 'postgres',
+    // Connection pool settings
+    max: isTest ? 5 : 10, // Smaller pool for tests
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  };
 };
 
 export class Database {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool(dbConfig);
+    this.pool = new Pool(getDbConfig());
     
     // Handle pool errors
     this.pool.on('error', (err) => {
