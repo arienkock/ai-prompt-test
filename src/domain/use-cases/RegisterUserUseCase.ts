@@ -22,13 +22,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
 
   async execute(context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> {
     // Validate command/query as per architecture rules
-    const commandValidation = this.validateCommand(command);
-    if (!commandValidation.valid) {
-      throw new ValidationDomainError(
-        'Invalid registration command',
-        commandValidation.errors
-      );
-    }
+    this.validateCommand(command);
 
     // Check if user with email already exists
     const existingUser = await this.userRepository.findByEmail(command.email);
@@ -128,7 +122,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
    * Validate command input as per architecture rules
    * Command/Query validation must be stateless and not require repository usage
    */
-  private validateCommand(command: RegisterUserCommandDto): ValidationResult {
+  private validateCommand(command: RegisterUserCommandDto): void {
     const errors: ValidationError[] = [];
 
     if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {
@@ -161,6 +155,11 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       errors.push(new ValidationError('password', 'Password must be less than 128 characters'));
     }
 
-    return new ValidationResult(errors.length === 0, errors);
+    if (errors.length !== 0) {
+      throw new ValidationDomainError(
+        'Invalid registration command',
+        errors
+      );
+    }
   }
 }

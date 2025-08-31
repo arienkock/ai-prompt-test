@@ -23,13 +23,7 @@ export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, Ge
     this.validateQuery(query);
 
     // Authorization check - user can only access their own profile
-    if (!context.userId) {
-      throw new AuthorizationDomainError('Authentication required');
-    }
-
-    if (context.userId !== query.userId) {
-      throw new AuthorizationDomainError('Access denied - can only access own profile');
-    }
+    this.authorizationCheck(context, query);
 
     // Find user by ID
     const user = await this.userRepository.findById(query.userId);
@@ -56,6 +50,16 @@ export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, Ge
       }
     };
   }
+
+    private authorizationCheck(context: Context, query: GetUserProfileQueryDto) {
+        if (!context.userId) {
+            throw new AuthorizationDomainError('Authentication required');
+        }
+
+        if (context.userId !== query.userId) {
+            throw new AuthorizationDomainError('Access denied - can only access own profile');
+        }
+    }
 
   /**
    * Validate query input as per architecture rules
