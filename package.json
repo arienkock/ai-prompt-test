@@ -11,7 +11,7 @@
     "dev": "nodemon",
     "dev:backend": "nodemon",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:both": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BACKEND,FRONTEND\" --prefix name",
+    "dev:both": "concurrently --names \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
