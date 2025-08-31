@@ -7,7 +7,7 @@ import { MigrationRunner } from './data-access/migrations/MigrationRunner';
 import { AuthRoutes } from './web-controller/routes/AuthRoutes';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 // Initialize database
 const database = new Database();
