@@ -1,26 +1,10 @@
 import request from 'supertest';
-import app from '../src/main';
-import { TestUtils } from './testUtils';
-import { RegisterUserCommandDto, LoginUserCommandDto } from '../src/domain/types/Dtos';
+import app from '../../src/main';
+import { TestUtils } from '../testUtils';
+import { RegisterUserCommandDto, LoginUserCommandDto } from '../../src/domain/types/Dtos';
 
 describe('Authentication Security Tests', () => {
   let testUserData: RegisterUserCommandDto;
-
-  beforeAll(async () => {
-    // Ensure we're in test environment
-    process.env.NODE_ENV = 'test';
-    
-    // Initialize test database (creates fresh database)
-    await TestUtils.initializeTestDatabase();
-  });
-
-  afterAll(async () => {
-    // Drop the entire test database for complete cleanup
-    await TestUtils.dropTestDatabase();
-    
-    // Note: Database connection cleanup is handled in global setup
-    // to avoid issues with multiple test files
-  });
 
   beforeEach(() => {
     // Generate unique user data for each test

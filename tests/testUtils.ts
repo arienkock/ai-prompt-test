@@ -82,6 +82,19 @@ export class TestUtils {
     };
   }
 
+  static async updateUserIsAdmin(userId: string, isAdmin: boolean): Promise<void> {
+    const pool = await this.initializeTestDatabase();
+    const client = await pool.connect();
+    try {
+      await client.query('UPDATE users SET "isAdmin" = $1 WHERE id = $2', [isAdmin, userId]);
+    } catch (error) {
+      console.error(`Error updating isAdmin status for user ${userId}:`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async deleteUserByEmail(email: string): Promise<void> {
     const pool = await this.initializeTestDatabase();
     const client = await pool.connect();

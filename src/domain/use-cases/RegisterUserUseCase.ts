@@ -40,7 +40,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       command.firstName,
       command.lastName,
       true, // isActive = true by default
-      false, // isAdmin = false by default for user registration
+      false, // isAdmin = false by default
       new Date(), // createdAt
       new Date()  // updatedAt
     );
