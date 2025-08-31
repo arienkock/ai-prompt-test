@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import morgan from 'morgan';
 import { Database } from './data-access/config/database';
 import { MigrationRunner } from './data-access/migrations/MigrationRunner';
 import { AuthRoutes } from './web-controller/routes/AuthRoutes';
 import { ErrorHandler } from './web-controller/middleware/ErrorHandler';
+import { logger } from './web-controller/services/LoggingService';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -16,6 +18,7 @@ const database = new Database();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev')); // 'dev' format for concise color-coded output
 
 // API routes
 app.get('/api/health', (req, res) => {
@@ -65,15 +68,15 @@ async function startServer() {
     
     // Start the server
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📁 Serving frontend from: ${frontendDistPath}`);
-      console.log(`🔗 API available at: http://localhost:${PORT}/api`);
-      console.log(`🔐 Authentication routes: http://localhost:${PORT}/api/auth`);
-      console.log(`⚡ Node.js version: ${process.version}`);
-      console.log(`🏗️ Architecture: Layered with Domain-Driven Design`);
+      logger.info(`🚀 Server running on http://localhost:${PORT}`);
+      logger.info(`📁 Serving frontend from: ${frontendDistPath}`);
+      logger.info(`🔗 API available at: http://localhost:${PORT}/api`);
+      logger.info(`🔐 Authentication routes: http://localhost:${PORT}/api/auth`);
+      logger.info(`⚡ Node.js version: ${process.version}`);
+      logger.info(`🏗️ Architecture: Layered with Domain-Driven Design`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server: %o', error as Error);
     process.exit(1);
   }
 }

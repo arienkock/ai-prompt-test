@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { DomainError, DomainErrorCode, ValidationDomainError } from '../../domain/types/UseCase';
 import { ValidationError } from '../../shared/types/ValidationTypes';
+import { logger } from '../services/LoggingService';
 
 /**
  * Unified error response format
@@ -25,7 +26,7 @@ export class ErrorHandler {
    * Must be the last middleware in the chain
    */
   static handle(error: any, req: Request, res: Response, next: NextFunction): void {
-    console.error('Error caught by unified error handler:', error);
+    logger.error(error, 'Error caught by unified error handler:')
 
     // Handle domain errors with proper status code mapping
     if (error instanceof DomainError) {
