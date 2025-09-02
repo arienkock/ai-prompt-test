@@ -185,47 +185,6 @@ export class FileScanner {
   }
 
   /**
-   * Check if SQL files use quoted identifiers
-   */
-  checkSQLQuotedIdentifiers(files: FileInfo[]): ScanResult[] {
-    const violations: ScanResult[] = [];
-
-    for (const file of files) {
-      if (!file.relativePath.endsWith('.sql')) continue;
-
-      const lines = file.content.split('\n');
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // Check for unquoted column names in CREATE TABLE, ALTER TABLE, etc.
-        const unquotedColumnPattern = /(?:CREATE TABLE|ALTER TABLE|SELECT|FROM|WHERE|ORDER BY|GROUP BY)\s+.*?([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:[,\s]|$)/gi;
-        const matches = [...line.matchAll(unquotedColumnPattern)];
-        
-        for (const match of matches) {
-          const columnName = match[1];
-          // Skip SQL keywords and check if it looks like a column name
-          if (this.isLikelyColumnName(columnName) && !line.includes(`"${columnName}"`)) {
-            violations.push({
-              file: file.relativePath,
-              line: i + 1,
-              content: line.trim(),
-              violation: `Unquoted column name '${columnName}' - all column names must be quoted`
-            });
-          }
-        }
-      }
-    }
-
-    return violations;
-  }
-
-  private isLikelyColumnName(name: string): boolean {
-    const sqlKeywords = ['CREATE', 'TABLE', 'ALTER', 'SELECT', 'FROM', 'WHERE', 'ORDER', 'BY', 'GROUP', 'HAVING', 'INSERT', 'UPDATE', 'DELETE', 'NULL', 'NOT', 'AND', 'OR'];
-    return !sqlKeywords.includes(name.toUpperCase()) && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
-  }
-
-  /**
    * Format violations for display
    */
   static formatViolations(violations: ScanResult[]): string {

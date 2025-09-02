@@ -1,6 +1,7 @@
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase, ValidationDomainError, AuthorizationDomainError, NotFoundDomainError, AuthenticationDomainError } from '../types/UseCase';
+import { UseCase } from '../types/UseCase';
+import { ValidationDomainError, AuthorizationDomainError, NotFoundDomainError, AuthenticationDomainError } from '../entities/DomainErrors';
 import { DeleteUserCommandDto, DeleteUserResponseDto } from '../types/Dtos';
 
 export class DeleteUserUseCase implements UseCase<DeleteUserCommandDto, DeleteUserResponseDto> {

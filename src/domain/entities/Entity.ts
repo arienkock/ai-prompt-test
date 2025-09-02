@@ -1,4 +1,5 @@
 import { ValidationResult } from '../../shared/types/ValidationTypes';
+import { SystemError } from './DomainErrors';
 
 /**
  * Abstract base Entity class as per architecture rules
@@ -7,7 +8,7 @@ import { ValidationResult } from '../../shared/types/ValidationTypes';
 export abstract class Entity {
   constructor(public readonly id?: string) {
     if (new.target === Entity) {
-      throw new Error('Cannot instantiate abstract Entity class');
+      throw new SystemError('Cannot instantiate abstract Entity class');
     }
   }
 
@@ -32,7 +33,7 @@ export abstract class Entity {
 export abstract class ValueObject {
   constructor() {
     if (new.target === ValueObject) {
-      throw new Error('Cannot instantiate abstract ValueObject class');
+      throw new SystemError('Cannot instantiate abstract ValueObject class');
     }
   }
 

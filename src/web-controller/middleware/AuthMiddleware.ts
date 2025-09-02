@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { jwtService } from '../../shared/services/JwtService';
 import { Context } from '../../shared/types/ValidationTypes';
-import { AuthenticationDomainError } from '../../domain/types/UseCase';
+import { AuthenticationDomainError } from '@/domain/entities/DomainErrors';
 
 // Extend Express Request to include user context
 declare global {

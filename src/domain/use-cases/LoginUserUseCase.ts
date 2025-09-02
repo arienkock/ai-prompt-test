@@ -1,7 +1,8 @@
 import * as bcrypt from 'bcryptjs';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase, ValidationDomainError, AuthenticationDomainError } from '../types/UseCase';
+import { UseCase } from '../types/UseCase';
+import { ValidationDomainError, AuthenticationDomainError } from '../entities/DomainErrors';
 import { LoginUserCommandDto, LoginUserResponseDto } from '../types/Dtos';
 
 export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserResponseDto> {

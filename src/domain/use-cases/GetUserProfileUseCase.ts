@@ -1,6 +1,7 @@
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase, ValidationDomainError, NotFoundDomainError, AuthorizationDomainError } from '../types/UseCase';
+import { UseCase } from '../types/UseCase';
+import { ValidationDomainError, NotFoundDomainError, AuthorizationDomainError } from '../entities/DomainErrors';
 import { GetUserProfileQueryDto, GetUserProfileResponseDto } from '../types/Dtos';
 
 export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, GetUserProfileResponseDto> {

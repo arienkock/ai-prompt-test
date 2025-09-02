@@ -8,7 +8,7 @@ import { UserRepository } from '../../data-access/repositories/UserRepository';
 import { jwtService } from '../../shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { ErrorHandler } from '../middleware/ErrorHandler';
-import { AuthenticationDomainError } from '../../domain/types/UseCase';
+import { AuthenticationDomainError } from '@/domain/entities/DomainErrors';
 import { 
   RegisterUserCommandDto, 
   RegisterUserResponseDto, 

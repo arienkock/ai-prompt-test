@@ -4,7 +4,8 @@ import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
-import { UseCase, ValidationDomainError, ConflictDomainError } from '../types/UseCase';
+import { UseCase } from '../types/UseCase';
+import { ValidationDomainError, ConflictDomainError } from '../entities/DomainErrors';
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
 
 export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, RegisterUserResponseDto> {

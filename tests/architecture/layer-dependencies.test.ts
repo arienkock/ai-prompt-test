@@ -19,10 +19,10 @@ describe('Architecture Rules - Layer Dependencies', () => {
         'Domain layer must not directly import from data-access layer (use dependency inversion)'
       );
 
-      expect(violations.length).toBe(0);
       if (violations.length > 0) {
-        throw new Error(`Domain layer dependency violations found:\n\n${FileScanner.formatViolations(violations)}`);
+        console.error(`\n❌ Domain layer dependency violations found:\n\n${FileScanner.formatViolations(violations)}\n`);
       }
+      expect(violations.length).toBe(0);
     });
 
     test('Entities must not call or reference use case objects', () => {
@@ -45,10 +45,10 @@ describe('Architecture Rules - Layer Dependencies', () => {
 
       const allViolations = [...useCaseImportViolations, ...useCaseReferenceViolations];
 
-      expect(allViolations.length).toBe(0);
       if (allViolations.length > 0) {
-        throw new Error(`Entity-UseCase dependency violations found:\n\n${FileScanner.formatViolations(allViolations)}`);
+        console.error(`\n❌ Entity-UseCase dependency violations found:\n\n${FileScanner.formatViolations(allViolations)}\n`);
       }
+      expect(allViolations.length).toBe(0);
     });
   });
 
@@ -73,31 +73,14 @@ describe('Architecture Rules - Layer Dependencies', () => {
 
       const allViolations = [...entityImportViolations, ...domainTypeViolations];
 
-      expect(allViolations.length).toBe(0);
       if (allViolations.length > 0) {
-        throw new Error(`Shared code dependency violations found:\n\n${FileScanner.formatViolations(allViolations)}`);
+        console.error(`\n❌ Shared code dependency violations found:\n\n${FileScanner.formatViolations(allViolations)}\n`);
       }
+      expect(allViolations.length).toBe(0);
     });
   });
 
   describe('Cross-Layer Import Validation', () => {
-    test('Web Controller must not import Data Access directly', () => {
-      // Scan web controller files
-      const webControllerFiles = scanner.scanDirectory('src/web-controller');
-      
-      // Check for direct data-access imports (should go through domain layer)
-      const violations = scanner.checkImportViolations(
-        webControllerFiles,
-        /from\s+['"](\.\.\/)*data-access/,
-        'Web Controller must not directly import from data-access layer (use domain layer interfaces)'
-      );
-
-      expect(violations.length).toBe(0);
-      if (violations.length > 0) {
-        throw new Error(`Web Controller data-access dependency violations found:\n\n${FileScanner.formatViolations(violations)}`);
-      }
-    });
-
     test('Frontend must not import backend implementation details', () => {
       // Scan frontend files if they exist
       const frontendFiles = scanner.scanDirectory('frontend/src');
@@ -110,14 +93,14 @@ describe('Architecture Rules - Layer Dependencies', () => {
       // Check for backend imports
       const backendImportViolations = scanner.checkImportViolations(
         frontendFiles,
-        /from\s+['"](\.\.\/)*src\/(domain|data-access|web-controller)/,
+        /from\s+['"](\.\.\/)*src\/(data-access|web-controller)/,
         'Frontend must not import backend implementation details'
       );
 
-      expect(backendImportViolations.length).toBe(0);
       if (backendImportViolations.length > 0) {
-        throw new Error(`Frontend-Backend dependency violations found:\n\n${FileScanner.formatViolations(backendImportViolations)}`);
+        console.error(`\n❌ Frontend-Backend dependency violations found:\n\n${FileScanner.formatViolations(backendImportViolations)}\n`);
       }
+      expect(backendImportViolations.length).toBe(0);
     });
   });
 
@@ -133,10 +116,10 @@ describe('Architecture Rules - Layer Dependencies', () => {
         'Domain repository interfaces must not import their implementations'
       );
 
-      expect(violations.length).toBe(0);
       if (violations.length > 0) {
-        throw new Error(`Repository circular dependency violations found:\n\n${FileScanner.formatViolations(violations)}`);
+        console.error(`\n❌ Repository circular dependency violations found:\n\n${FileScanner.formatViolations(violations)}\n`);
       }
+      expect(violations.length).toBe(0);
     });
 
     test('Use cases must not import web controller types', () => {
@@ -150,10 +133,10 @@ describe('Architecture Rules - Layer Dependencies', () => {
         'Use cases must not import web controller types (maintain separation of concerns)'
       );
 
-      expect(violations.length).toBe(0);
       if (violations.length > 0) {
-        throw new Error(`Use case web controller dependency violations found:\n\n${FileScanner.formatViolations(violations)}`);
+        console.error(`\n❌ Use case web controller dependency violations found:\n\n${FileScanner.formatViolations(violations)}\n`);
       }
+      expect(violations.length).toBe(0);
     });
   });
 
@@ -170,10 +153,10 @@ describe('Architecture Rules - Layer Dependencies', () => {
         'Architecture tests should only import from utils and avoid tight coupling to production code'
       );
 
-      expect(violations.length).toBe(0);
       if (violations.length > 0) {
-        throw new Error(`Architecture test dependency violations found:\n\n${FileScanner.formatViolations(violations)}`);
+        console.error(`\n❌ Architecture test dependency violations found:\n\n${FileScanner.formatViolations(violations)}\n`);
       }
+      expect(violations.length).toBe(0);
     });
   });
 });

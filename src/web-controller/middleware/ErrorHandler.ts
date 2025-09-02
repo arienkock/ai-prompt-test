@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { DomainError, DomainErrorCode, ValidationDomainError } from '../../domain/types/UseCase';
-import { ValidationError } from '../../shared/types/ValidationTypes';
+import { DomainError, DomainErrorCode, ValidationDomainError } from '@/domain/entities/DomainErrors';
 import { logger } from '../services/LoggingService';
 
 /**
