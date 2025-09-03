@@ -93,18 +93,25 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       );
     }
     // Return DTO response
+    const userDto: any = {
+      id: createdUser.id!,
+      email: createdUser.email,
+      firstName: createdUser.firstName,
+      lastName: createdUser.lastName,
+      isActive: createdUser.isActive,
+      isAdmin: createdUser.isAdmin
+    };
+
+    if (createdUser.createdAt) {
+      userDto.createdAt = createdUser.createdAt.toISOString();
+    }
+    if (createdUser.updatedAt) {
+      userDto.updatedAt = createdUser.updatedAt.toISOString();
+    }
+
     return {
       message: 'User registered successfully',
-      user: {
-        id: createdUser.id!,
-        email: createdUser.email,
-        firstName: createdUser.firstName,
-        lastName: createdUser.lastName,
-        isActive: createdUser.isActive,
-        isAdmin: createdUser.isAdmin,
-        createdAt: createdUser.createdAt?.toISOString(),
-        updatedAt: createdUser.updatedAt?.toISOString()
-      },
+      user: userDto,
       accessToken: '', // These will be filled by the web controller
       refreshToken: ''
     };

@@ -125,6 +125,7 @@ describe('Architecture Rules - Naming & Structure', () => {
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
+          if (!line) continue;
           
           if (useCaseCallPattern.test(line)) {
             hasUseCaseCalls = true;

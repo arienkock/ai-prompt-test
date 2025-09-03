@@ -60,18 +60,25 @@ export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserR
     }
 
     // Return DTO response
+    const userDto: any = {
+      id: user.id!,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isActive: user.isActive,
+      isAdmin: user.isAdmin
+    };
+
+    if (user.createdAt) {
+      userDto.createdAt = user.createdAt.toISOString();
+    }
+    if (user.updatedAt) {
+      userDto.updatedAt = user.updatedAt.toISOString();
+    }
+
     return {
       message: 'Login successful',
-      user: {
-        id: user.id!,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isActive: user.isActive,
-        isAdmin: user.isAdmin,
-        createdAt: user.createdAt?.toISOString(),
-        updatedAt: user.updatedAt?.toISOString()
-      },
+      user: userDto,
       accessToken: '', // These will be filled by the web controller
       refreshToken: ''
     };

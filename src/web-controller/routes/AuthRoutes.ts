@@ -94,6 +94,12 @@ export class AuthRoutes {
     // Delete user route - private write operation
     this.router.delete('/users/:userId', AuthMiddleware.authenticate, wrapAsync(async (req: Request, res: Response, next: NextFunction) => {
       const { userId } = req.params;
+      
+      if (!userId) {
+        res.status(400).json({ error: 'User ID is required' });
+        return;
+      }
+      
       const command: DeleteUserCommandDto = { userId };
 
       // Execute use case within transaction context

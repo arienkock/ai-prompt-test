@@ -95,7 +95,7 @@ export class JwtService {
       return null;
     }
 
-    return parts[1];
+    return parts[1] || null;
   }
 
   refreshTokenPair(refreshToken: string): TokenPair | null {

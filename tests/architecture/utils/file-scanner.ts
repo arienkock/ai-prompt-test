@@ -74,13 +74,15 @@ export class FileScanner {
       const lines = file.content.split('\n');
       
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+        const line = lines[i];
+        if (!line) continue;
         
-        if (line.startsWith('import ') && forbiddenImportPattern.test(line)) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.startsWith('import ') && forbiddenImportPattern.test(trimmedLine)) {
           violations.push({
             file: file.relativePath,
             line: i + 1,
-            content: line,
+            content: trimmedLine,
             violation: violationMessage
           });
         }
@@ -101,6 +103,7 @@ export class FileScanner {
       
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        if (!line) continue;
         
         if (pattern.test(line)) {
           violations.push({
@@ -127,6 +130,8 @@ export class FileScanner {
       
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        if (!line) continue;
+        
         const matches = line.match(pattern);
         
         if (matches) {

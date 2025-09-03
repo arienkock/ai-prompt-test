@@ -44,16 +44,25 @@ export class GetAllUsersUseCase implements UseCase<GetAllUsersQueryDto, GetAllUs
     const paginatedUsers = await this.userRepository.list(pagination);
 
     // Transform User entities to UserDTOs
-    const userDtos: UserDto[] = paginatedUsers.data.map(user => ({
-      id: user.id!,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-      isAdmin: user.isAdmin,
-      createdAt: user.createdAt?.toISOString(),
-      updatedAt: user.updatedAt?.toISOString()
-    }));
+    const userDtos: UserDto[] = paginatedUsers.data.map(user => {
+      const userDto: any = {
+        id: user.id!,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isActive: user.isActive,
+        isAdmin: user.isAdmin
+      };
+
+      if (user.createdAt) {
+        userDto.createdAt = user.createdAt.toISOString();
+      }
+      if (user.updatedAt) {
+        userDto.updatedAt = user.updatedAt.toISOString();
+      }
+
+      return userDto;
+    });
 
     // Return DTO response with pagination metadata
     return {
