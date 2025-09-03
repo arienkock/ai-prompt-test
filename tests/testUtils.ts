@@ -9,7 +9,7 @@ export class TestUtils {
     if (!this.prisma) {
       // Ensure we're in test environment
       process.env.NODE_ENV = 'test';
-      process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+      process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/postgres_test';
       
       // First, create the test database if it doesn't exist
       await this.createTestDatabaseIfNotExists();
@@ -17,7 +17,7 @@ export class TestUtils {
       this.prisma = new PrismaClient({
         datasources: {
           db: {
-            url: process.env.DATABASE_URL_TEST || 'postgresql://postgres:postgres@localhost:5432/postgres_test'
+            url: 'postgresql://postgres:postgres@localhost:5432/postgres_test'
           }
         }
       });
@@ -26,7 +26,7 @@ export class TestUtils {
       try {
         execSync('npx prisma migrate deploy', { 
           stdio: 'inherit',
-          env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL_TEST }
+          env: { ...process.env, DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres_test" }
         });
       } catch (error) {
         console.error('Migration failed:', error);

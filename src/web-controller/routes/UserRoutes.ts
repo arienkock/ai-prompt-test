@@ -25,14 +25,12 @@ export class UserRoutes {
       this.router,
       '/',
       this.prisma,
+      GetAllUsersUseCase,
       (prismaTransaction) => {
         const userRepository = new UserRepository(prismaTransaction);
         return new GetAllUsersUseCase(userRepository);
       }
     );
-    
-    // Apply unified error handler middleware - must be last
-    this.router.use(ErrorHandler.handle);
   }
 
   getRouter(): Router {

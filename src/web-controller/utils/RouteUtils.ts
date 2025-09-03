@@ -28,18 +28,20 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
   router: Router,
   path: string,
   prisma: PrismaClient,
+  useCaseDetails: {
+    crudType: CrudType,
+    isPublic: boolean
+  },
   useCaseFactory: (prismaTransaction?: any) => TUseCase,
   responseHandler?: (result: TResponse, req: Request, res: Response) => void,
-  httpMethod?: 'get' | 'post' | 'put' | 'patch' | 'delete'
 ): void {
   // Create a sample instance to get the constructor reference
-  const sampleInstance = useCaseFactory();
-  const UseCaseClass = sampleInstance.constructor as any;
-  const crudType = UseCaseClass.crudType as CrudType;
-  const isPublic = UseCaseClass.isPublic as boolean;
-  
+  const {
+    crudType,
+    isPublic
+  } = useCaseDetails
   // Determine HTTP method based on explicit parameter or CRUD type
-  const method = httpMethod || mapCrudTypeToHttpMethod(crudType);
+  const method = mapCrudTypeToHttpMethod(crudType);
   
   // Determine authentication middleware based on use case visibility
   const authMiddleware = isPublic 

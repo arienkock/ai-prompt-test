@@ -37,6 +37,7 @@ export class AuthRoutes {
       this.router,
       '/register',
       this.prisma,
+      RegisterUserUseCase,
       (prismaTransaction) => {
         const userRepository = new UserRepository(prismaTransaction);
         return new RegisterUserUseCase(userRepository);
@@ -61,6 +62,7 @@ export class AuthRoutes {
       this.router,
       '/login',
       this.prisma,
+      LoginUserUseCase,
       (prismaTransaction) => {
         const userRepository = new UserRepository(prismaTransaction);
         return new LoginUserUseCase(userRepository);
@@ -85,6 +87,7 @@ export class AuthRoutes {
       this.router,
       '/profile',
       this.prisma,
+      GetUserProfileUseCase,
       (prismaTransaction) => {
         const userRepository = new UserRepository(prismaTransaction);
         return new GetUserProfileUseCase(userRepository);
@@ -96,12 +99,11 @@ export class AuthRoutes {
       this.router,
       '/users/:userId',
       this.prisma,
+      DeleteUserUseCase,
       (prismaTransaction) => {
         const userRepository = new UserRepository(prismaTransaction);
         return new DeleteUserUseCase(userRepository);
-      },
-      undefined,
-      'delete'
+      }
     );
 
     // Non-use-case routes
@@ -116,9 +118,6 @@ export class AuthRoutes {
         timestamp: new Date().toISOString()
       });
     });
-
-    // Apply unified error handler middleware - must be last
-    this.router.use(ErrorHandler.handle);
   }
 
   private async refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
