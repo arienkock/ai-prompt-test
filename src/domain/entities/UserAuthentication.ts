@@ -29,9 +29,9 @@ export class UserAuthentication extends Entity {
   validate(): ValidationResult {
     const errors: ValidationError[] = [];
 
-    // ID validation
-    if (!this.hasValidId()) {
-      errors.push(new ValidationError('id', 'ID is required and must be a non-empty string'));
+    // ID validation - only required for existing entities (not new ones)
+    if (this.id !== undefined && !this.hasValidId()) {
+      errors.push(new ValidationError('id', 'ID must be a non-empty string when provided'));
     }
 
     // userId validation (weak entity - must belong to a User)

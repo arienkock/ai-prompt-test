@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
 import { RegisterUserUseCase } from '@/domain/use-cases/RegisterUserUseCase';
 import { LoginUserUseCase } from '@/domain/use-cases/LoginUserUseCase';
 import { GetUserProfileUseCase } from '@/domain/use-cases/GetUserProfileUseCase';
 import { DeleteUserUseCase } from '@/domain/use-cases/DeleteUserUseCase';
 import { UserRepository } from '@/data-access/repositories/UserRepository';
+import { PrismaTransactionHelper } from '@/data-access/utils/PrismaTransactionHelper';
 import { jwtService } from '@/shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { ErrorHandler } from '../middleware/ErrorHandler';
@@ -20,79 +21,91 @@ import {
   DeleteUserResponseDto 
 } from '@/domain/types/Dtos';
 import { routeToUseCase, wrapAsync } from '../utils/RouteUtils';
+import { v4 as uuidv4 } from 'uuid';
 
 export class AuthRoutes {
   private router: Router;
-  private pool: Pool;
+  private prisma: PrismaClient;
+  private transactionHelper: PrismaTransactionHelper;
 
-  constructor(pool: Pool) {
+  constructor(prisma: PrismaClient) {
     this.router = Router();
-    this.pool = pool;
+    this.prisma = prisma;
+    this.transactionHelper = new PrismaTransactionHelper(prisma);
     this.setupRoutes();
   }
 
   private setupRoutes(): void {
     // Register route - public write operation with token generation
-    routeToUseCase<RegisterUserCommandDto, RegisterUserResponseDto, RegisterUserUseCase>(
-      this.router,
-      '/register',
-      this.pool,
-      (client) => {
-        const userRepository = new UserRepository(this.pool, client);
-        return new RegisterUserUseCase(userRepository);
-      },
-      (result, req, res) => {
-        // Generate tokens for the new user
-        const tokens = jwtService.generateTokenPair({
-          userId: result.user.id,
-          email: result.user.email
-        });
+    this.router.post('/register', wrapAsync(async (req: Request, res: Response) => {
+      const command: RegisterUserCommandDto = req.body;
+      
+      const result = await this.transactionHelper.executeUseCase<RegisterUserCommandDto, RegisterUserResponseDto, RegisterUserUseCase>(
+        (prismaTransaction) => {
+          const userRepository = new UserRepository(prismaTransaction);
+          return new RegisterUserUseCase(userRepository);
+        },
+        { userId: undefined, requestId: uuidv4() },
+        command
+      );
 
-        res.status(201).json({
-          message: result.message,
-          user: result.user,
-          ...tokens
-        });
-      }
-    );
+      // Generate tokens for the new user
+      const tokens = jwtService.generateTokenPair({
+        userId: result.user.id,
+        email: result.user.email
+      });
+
+      res.status(201).json({
+        message: result.message,
+        user: result.user,
+        ...tokens
+      });
+    }));
 
     // Login route - public write operation with token generation
-    routeToUseCase<LoginUserCommandDto, LoginUserResponseDto, LoginUserUseCase>(
-      this.router,
-      '/login',
-      this.pool,
-      (client) => {
-        const userRepository = new UserRepository(this.pool, client);
-        return new LoginUserUseCase(userRepository);
-      },
-      (result, req, res) => {
-        // Generate tokens for the user
-        const tokens = jwtService.generateTokenPair({
-          userId: result.user.id,
-          email: result.user.email
-        });
+    this.router.post('/login', wrapAsync(async (req: Request, res: Response) => {
+      const command: LoginUserCommandDto = req.body;
+      
+      const result = await this.transactionHelper.executeUseCase<LoginUserCommandDto, LoginUserResponseDto, LoginUserUseCase>(
+        (prismaTransaction) => {
+          const userRepository = new UserRepository(prismaTransaction);
+          return new LoginUserUseCase(userRepository);
+        },
+        { userId: undefined, requestId: uuidv4() },
+        command
+      );
 
-        res.json({
-          message: result.message,
-          user: result.user,
-          ...tokens
-        });
-      }
-    );
+      // Generate tokens for the user
+      const tokens = jwtService.generateTokenPair({
+        userId: result.user.id,
+        email: result.user.email
+      });
+
+      res.json({
+        message: result.message,
+        user: result.user,
+        ...tokens
+      });
+    }));
 
     // Profile route - private read operation
-    routeToUseCase<GetUserProfileQueryDto, GetUserProfileResponseDto, GetUserProfileUseCase>(
-      this.router,
-      '/profile',
-      this.pool,
-      (client) => {
-        const userRepository = new UserRepository(this.pool, client);
-        return new GetUserProfileUseCase(userRepository);
-      }
-    );
+    this.router.get('/profile', AuthMiddleware.authenticate, wrapAsync(async (req: Request, res: Response) => {
+      const query: GetUserProfileQueryDto = { userId: req.context!.userId! };
+      
+      const result = await this.transactionHelper.executeUseCase<GetUserProfileQueryDto, GetUserProfileResponseDto, GetUserProfileUseCase>(
+        (prismaTransaction) => {
+          const userRepository = new UserRepository(prismaTransaction);
+          return new GetUserProfileUseCase(userRepository);
+        },
+        req.context!,
+        query
+      );
+
+      res.json(result);
+    }));
 
     // Delete user route - private write operation
-    this.router.delete('/users/:userId', AuthMiddleware.authenticate, wrapAsync(async (req: Request, res: Response, next: NextFunction) => {
+    this.router.delete('/users/:userId', AuthMiddleware.authenticate, wrapAsync(async (req: Request, res: Response) => {
       const { userId } = req.params;
       
       if (!userId) {
@@ -102,11 +115,9 @@ export class AuthRoutes {
       
       const command: DeleteUserCommandDto = { userId };
 
-      // Execute use case within transaction context
-      const transactionHelper = new (await import('@/data-access/utils/TransactionHelper')).TransactionHelper(this.pool);
-      const result = await transactionHelper.executeUseCase<DeleteUserCommandDto, DeleteUserResponseDto, DeleteUserUseCase>(
-        (client) => {
-          const userRepository = new UserRepository(this.pool, client);
+      const result = await this.transactionHelper.executeUseCase<DeleteUserCommandDto, DeleteUserResponseDto, DeleteUserUseCase>(
+        (prismaTransaction) => {
+          const userRepository = new UserRepository(prismaTransaction);
           return new DeleteUserUseCase(userRepository);
         },
         req.context!,

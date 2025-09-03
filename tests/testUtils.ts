@@ -1,28 +1,39 @@
-import { Pool } from 'pg';
-import { Database } from '../src/data-access/config/database';
-import { MigrationRunner } from '../src/data-access/migrations/MigrationRunner';
+import { PrismaClient } from '@prisma/client';
 import { RegisterUserCommandDto } from '../src/domain/types/Dtos';
+import { execSync } from 'child_process';
 
 export class TestUtils {
-  private static database: Database | null = null;
-  private static pool: Pool | null = null;
+  private static prisma: PrismaClient | null = null;
 
-  static async initializeTestDatabase(): Promise<Pool> {
-    if (!this.database) {
+  static async initializeTestDatabase(): Promise<PrismaClient> {
+    if (!this.prisma) {
       // Ensure we're in test environment
       process.env.NODE_ENV = 'test';
+      process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
       
       // First, create the test database if it doesn't exist
       await this.createTestDatabaseIfNotExists();
       
-      this.database = new Database();
-      this.pool = this.database.getPool();
+      this.prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL_TEST || 'postgresql://postgres:postgres@localhost:5432/postgres_test'
+          }
+        }
+      });
       
       // Run migrations to ensure test database is up to date
-      const migrationRunner = new MigrationRunner(this.pool);
-      await migrationRunner.runPendingMigrations();
+      try {
+        execSync('npx prisma migrate deploy', { 
+          stdio: 'inherit',
+          env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL_TEST }
+        });
+      } catch (error) {
+        console.error('Migration failed:', error);
+        throw error;
+      }
     }
-    return this.pool!;
+    return this.prisma;
   }
 
   private static async createTestDatabaseIfNotExists(): Promise<void> {
@@ -63,10 +74,9 @@ export class TestUtils {
   }
 
   static async closeTestDatabase(): Promise<void> {
-    if (this.database) {
-      await this.database.close();
-      this.database = null;
-      this.pool = null;
+    if (this.prisma) {
+      await this.prisma.$disconnect();
+      this.prisma = null;
     }
   }
 
@@ -83,52 +93,49 @@ export class TestUtils {
   }
 
   static async updateUserIsAdmin(userId: string, isAdmin: boolean): Promise<void> {
-    const pool = await this.initializeTestDatabase();
-    const client = await pool.connect();
+    const prisma = await this.initializeTestDatabase();
     try {
-      await client.query('UPDATE users SET "isAdmin" = $1 WHERE id = $2', [isAdmin, userId]);
+      await prisma.user.update({
+        where: { id: userId },
+        data: { isAdmin }
+      });
     } catch (error) {
       console.error(`Error updating isAdmin status for user ${userId}:`, error);
       throw error;
-    } finally {
-      client.release();
     }
   }
 
   static async deleteUserByEmail(email: string): Promise<void> {
-    const pool = await this.initializeTestDatabase();
-    const client = await pool.connect();
+    const prisma = await this.initializeTestDatabase();
     
     try {
-      await client.query('DELETE FROM users WHERE email = $1', [email]);
+      await prisma.user.delete({
+        where: { email }
+      });
     } catch (error) {
       console.error('Error deleting test user:', error);
-    } finally {
-      client.release();
     }
   }
 
   static async userExists(email: string): Promise<boolean> {
-    const pool = await this.initializeTestDatabase();
-    const client = await pool.connect();
+    const prisma = await this.initializeTestDatabase();
     
     try {
-      const result = await client.query('SELECT id FROM users WHERE email = $1', [email]);
-      return result.rows.length > 0;
+      const user = await prisma.user.findUnique({
+        where: { email }
+      });
+      return user !== null;
     } catch (error) {
       console.error('Error checking user existence:', error);
       return false;
-    } finally {
-      client.release();
     }
   }
 
   static async dropTestDatabase(): Promise<void> {
     // Close existing connections first
-    if (this.database) {
-      await this.database.close();
-      this.database = null;
-      this.pool = null;
+    if (this.prisma) {
+      await this.prisma.$disconnect();
+      this.prisma = null;
     }
 
     const { Pool } = require('pg');

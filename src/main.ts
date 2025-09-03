@@ -2,8 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import morgan from 'morgan';
-import { Database } from './data-access/config/database';
-import { MigrationRunner } from './data-access/migrations/MigrationRunner';
+import { PrismaClient } from '@prisma/client';
 import { AuthRoutes } from './web-controller/routes/AuthRoutes';
 import { UserRoutes } from './web-controller/routes/UserRoutes';
 import { ErrorHandler } from './web-controller/middleware/ErrorHandler';
@@ -12,8 +11,8 @@ import { logger } from './web-controller/services/LoggingService';
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Initialize database
-const database = new Database();
+// Initialize Prisma client
+const prisma = new PrismaClient();
 
 // Middleware
 app.use(cors());
@@ -33,11 +32,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Authentication routes
-const authRoutes = new AuthRoutes(database.getPool());
+const authRoutes = new AuthRoutes(prisma);
 app.use('/api/auth', authRoutes.getRouter());
 
 // User management routes
-const userRoutes = new UserRoutes(database.getPool());
+const userRoutes = new UserRoutes(prisma);
 app.use('/api/users', userRoutes.getRouter());
 
 // Serve static files from frontend build
@@ -64,12 +63,12 @@ app.get('*', (req, res) => {
 // This will catch any errors thrown by routes or middleware
 app.use(ErrorHandler.handle);
 
-// Start server with database initialization
+// Start server with Prisma initialization
 async function startServer() {
   try {
-    // Run database migrations
-    const migrationRunner = new MigrationRunner(database.getPool());
-    await migrationRunner.runPendingMigrations();
+    // Test Prisma connection
+    await prisma.$connect();
+    logger.info('✅ Database connected successfully');
     
     // Start the server
     app.listen(PORT, () => {
@@ -78,10 +77,11 @@ async function startServer() {
       logger.info(`🔗 API available at: http://localhost:${PORT}/api`);
       logger.info(`🔐 Authentication routes: http://localhost:${PORT}/api/auth`);
       logger.info(`⚡ Node.js version: ${process.version}`);
-      logger.info(`🏗️ Architecture: Layered with Domain-Driven Design`);
+      logger.info(`🏗️ Architecture: Layered with Domain-Driven Design + Prisma ORM`);
     });
   } catch (error) {
     logger.error('Failed to start server: %o', error as Error);
+    await prisma.$disconnect();
     process.exit(1);
   }
 }

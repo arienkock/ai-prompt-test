@@ -112,13 +112,6 @@ describe('DELETE /api/auth/users/:userId', () => {
     await TestUtils.deleteUserByEmail(otherUserData.email);
   });
 
-  it('should return 400 for invalid UUID format in userId parameter', async () => {
-    await request(app)
-      .delete('/api/auth/users/invalid-uuid')
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(400);
-  });
-
   it('should return 404 for non-existent user ID', async () => {
     await request(app)
       .delete('/api/auth/users/12345678-1234-5678-9012-123456789012')

@@ -1,437 +1,322 @@
-import { Pool, PoolClient } from 'pg';
-import { User } from '@/domain/entities/User';
-import { UserAuthentication } from '@/domain/entities/UserAuthentication';
-import { IUserRepository } from '@/domain/repositories/IUserRepository';
-import { ValidationResult, ValidationError } from '@/shared/types/ValidationTypes';
-import { SystemError, ValidationDomainError } from '@/domain/entities/DomainErrors';
-import { PaginatedResults, PaginationMeta, PaginationParams } from '@/domain/types/Dtos';
+import { PrismaClient } from '@prisma/client';
+import { User } from '../../domain/entities/User';
+import { UserAuthentication } from '../../domain/entities/UserAuthentication';
+import { IUserRepository } from '../../domain/repositories/IUserRepository';
+import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
+import { PaginatedResults, PaginationParams, PaginationMeta } from '../../domain/types/Dtos';
 
 export class UserRepository implements IUserRepository {
-  private pool: Pool;
-  private client: PoolClient | null;
-
-  constructor(pool: Pool, client?: PoolClient) {
-    this.pool = pool;
-    this.client = client || null;
-  }
-
-  /**
-   * Get a database client, either from transaction context or from pool
-   */
-  private async getClient(): Promise<PoolClient> {
-    if (this.client) {
-      return this.client;
-    }
-    return await this.pool.connect();
-  }
-
-  /**
-   * Release a database client if it was obtained from the pool
-   */
-  private releaseClient(client: PoolClient): void {
-    if (!this.client && client) {
-      client.release();
-    }
-  }
+  constructor(private prisma: PrismaClient) {}
 
   async findById(id: string, opts?: { includeRelations?: string[] }): Promise<User | null> {
-    const client = await this.getClient();
-    try {
-      // Base query
-      let query = 'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users WHERE id = $1';
-      const params: any[] = [id];
-      
-      const result = await client.query(query, params);
-      
-      if (result.rows.length === 0) {
-        return null;
+    const includeAuth = opts?.includeRelations?.includes('authentications');
+    
+    const userData = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        authentications: includeAuth || false
       }
-      
-      const row = result.rows[0];
-      return this.rowToUser(row);
-    } finally {
-      this.releaseClient(client);
-    }
-  }
+    });
 
-  private rowToUser(row: any): User {
-    return new User(
-      row.id,
-      row.email,
-      row.firstName,
-      row.lastName,
-      row.isActive,
-      row.isAdmin,
-      row.createdAt,
-      row.updatedAt
-    );
+    if (!userData) return null;
+
+    return User.fromData({
+      id: userData.id,
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      isActive: userData.isActive,
+      isAdmin: userData.isAdmin,
+      createdAt: userData.createdAt,
+      updatedAt: userData.updatedAt
+    });
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users WHERE email = $1',
-        [email.toLowerCase()]
-      );
-      
-      if (result.rows.length === 0) {
-        return null;
-      }
-      
-      const row = result.rows[0];
-      return this.rowToUser(row);
-    } finally {
-      this.releaseClient(client);
-    }
+    const userData = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
+
+    if (!userData) return null;
+
+    return User.fromData({
+      id: userData.id,
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      isActive: userData.isActive,
+      isAdmin: userData.isAdmin,
+      createdAt: userData.createdAt,
+      updatedAt: userData.updatedAt
+    });
   }
 
   async create(user: User): Promise<User> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        `INSERT INTO users (id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt"`,
-        [
-          user.id,
-          user.email.toLowerCase(),
-          user.firstName,
-          user.lastName,
-          user.isActive,
-          user.isAdmin
-        ]
-      );
-      
-      const row = result.rows[0];
-      return this.rowToUser(row);
-    } catch (error: any) {
-      // Handle unique constraint violations
-      if (error.code === '23505' && error.constraint === 'users_email_unique') {
-        throw new ValidationDomainError("Database constraint violation", [
-          new ValidationError('email', 'Email address already exists')
-        ]);
+    const userData = await this.prisma.user.create({
+      data: {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isActive: user.isActive,
+        isAdmin: user.isAdmin
       }
-      throw error      
-    } finally {
-      this.releaseClient(client);
-    }
+    });
+
+    return User.fromData({
+      id: userData.id,
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      isActive: userData.isActive,
+      isAdmin: userData.isAdmin,
+      createdAt: userData.createdAt,
+      updatedAt: userData.updatedAt
+    });
   }
 
   async update(user: User): Promise<ValidationResult> {
-    const validation = user.validate();
-    if (!validation.valid) {
-      return validation;
-    }
-
-    if (!user.hasValidId()) {
-      return new ValidationResult(false, [
-        new ValidationError('id', 'User ID is required for update')
-      ]);
-    }
-
-    const client = await this.getClient();
     try {
-      const result = await client.query(
-        `UPDATE users SET email = $2, "firstName" = $3, "lastName" = $4, "isActive" = $5, "isAdmin" = $6, "updatedAt" = NOW()
-         WHERE id = $1`,
-        [
-          user.id,
-          user.email.toLowerCase(),
-          user.firstName,
-          user.lastName,
-          user.isActive,
-          user.isAdmin,
-        ]
-      );
-      
-      if (result.rowCount === 0) {
-        return new ValidationResult(false, [
+      if (!user.id) {
+        return ValidationResult.failure([
+          new ValidationError('id', 'User ID is required for update')
+        ]);
+      }
+
+      const userData = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isActive: user.isActive,
+          isAdmin: user.isAdmin
+        }
+      });
+
+      return ValidationResult.success();
+    } catch (error: any) {
+      if (error.code === 'P2002') { // Unique constraint violation
+        return ValidationResult.failure([
+          new ValidationError('email', 'Email already exists')
+        ]);
+      }
+      if (error.code === 'P2025') { // Record not found
+        return ValidationResult.failure([
           new ValidationError('id', 'User not found')
         ]);
       }
-      
-      return ValidationResult.success();
-    } catch (error: any) {
-      if (error.code === '23505' && error.constraint === 'users_email_unique') {
-        return new ValidationResult(false, [
-          new ValidationError('email', 'Email address already exists')
-        ]);
-      }
-      
-      return new ValidationResult(false, [
-        new ValidationError('database', 'Failed to update user')
-      ]);
-    } finally {
-      this.releaseClient(client);
+      throw error;
     }
   }
 
   async delete(id: string): Promise<ValidationResult> {
-    const client = await this.getClient();
     try {
-      // First delete all user authentications (foreign key constraint)
-      await client.query('DELETE FROM user_authentications WHERE "userId" = $1', [id]);
-      
-      // Then delete the user
-      const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
-      
-      if (result.rowCount === 0) {
-        return new ValidationResult(false, [
+      await this.prisma.user.delete({
+        where: { id }
+      });
+      return ValidationResult.success();
+    } catch (error: any) {
+      if (error.code === 'P2025') { // Record not found
+        return ValidationResult.failure([
           new ValidationError('id', 'User not found')
         ]);
       }
-      
-      return ValidationResult.success();
-    } catch (error: any) {
-      return new ValidationResult(false, [
-        new ValidationError('database', 'Failed to delete user')
-      ]);
-    } finally {
-      this.releaseClient(client);
+      throw error;
     }
   }
 
   async list(pagination: PaginationParams): Promise<PaginatedResults<User>> {
-    const client = await this.getClient();
-    try {
-      // Get total count of users
-      const countResult = await client.query('SELECT COUNT(*) FROM users');
-      const total = parseInt(countResult.rows[0].count);
-      
-      // Get paginated data
-      const offset = (pagination.page - 1) * pagination.pageSize;
-      const result = await client.query(
-        'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2',
-        [pagination.pageSize, offset]
-      );
-      
-      const users = result.rows.map(row => this.rowToUser(row));
-      const meta = new PaginationMeta(total, pagination.page, pagination.pageSize);
-      
-      return new PaginatedResults(users, meta);
-    } finally {
-      this.releaseClient(client);
-    }
+    const skip = (pagination.page - 1) * pagination.pageSize;
+    
+    const [users, totalCount] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take: pagination.pageSize,
+        orderBy: { createdAt: 'desc' }
+      }),
+      this.prisma.user.count()
+    ]);
+
+    const userEntities = users.map((userData: any) => User.fromData({
+      id: userData.id,
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      isActive: userData.isActive,
+      isAdmin: userData.isAdmin,
+      createdAt: userData.createdAt,
+      updatedAt: userData.updatedAt
+    }));
+
+    const meta = new PaginationMeta(
+      totalCount,
+      pagination.page,
+      pagination.pageSize
+    );
+
+    return new PaginatedResults(userEntities, meta);
   }
 
+  // User authentication operations
   async findAuthenticationByUserId(userId: string, provider?: string): Promise<UserAuthentication[]> {
-    const client = await this.getClient();
-    try {
-      let query = 'SELECT id, "userId", provider, "providerId", "hashedPassword", "isActive", "createdAt", "updatedAt" FROM user_authentications WHERE "userId" = $1';
-      const params: any[] = [userId];
-      
-      if (provider) {
-        query += ' AND provider = $2';
-        params.push(provider);
-      }
-      
-      query += ' ORDER BY "createdAt" DESC';
-      
-      const result = await client.query(query, params);
-      
-      return result.rows.map(row => new UserAuthentication(
-        row.id,
-        row.userId,
-        row.provider,
-        row.providerId,
-        row.hashedPassword,
-        row.isActive,
-        row.createdAt,
-        row.updatedAt
-      ));
-    } finally {
-      this.releaseClient(client);
+    const whereClause: any = { userId };
+    if (provider) {
+      whereClause.provider = provider;
     }
+
+    const authData = await this.prisma.userAuthentication.findMany({
+      where: whereClause
+    });
+
+    return authData.map((auth: any) => UserAuthentication.fromData({
+      id: auth.id,
+      userId: auth.userId,
+      provider: auth.provider,
+      providerId: auth.providerId,
+      hashedPassword: auth.hashedPassword,
+      isActive: auth.isActive,
+      createdAt: auth.createdAt,
+      updatedAt: auth.updatedAt
+    }));
   }
 
   async findAuthenticationByProvider(provider: string, providerId: string): Promise<UserAuthentication | null> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        'SELECT id, "userId", provider, "providerId", "hashedPassword", "isActive", "createdAt", "updatedAt" FROM user_authentications WHERE provider = $1 AND "providerId" = $2',
-        [provider, providerId]
-      );
-      
-      if (result.rows.length === 0) {
-        return null;
+    const authData = await this.prisma.userAuthentication.findUnique({
+      where: {
+        provider_providerId: {
+          provider,
+          providerId
+        }
       }
-      
-      const row = result.rows[0];
-      return new UserAuthentication(
-        row.id,
-        row.userId,
-        row.provider,
-        row.providerId,
-        row.hashedPassword,
-        row.isActive,
-        row.createdAt,
-        row.updatedAt
-      );
-    } finally {
-      this.releaseClient(client);
-    }
+    });
+
+    if (!authData) return null;
+
+    return UserAuthentication.fromData({
+      id: authData.id,
+      userId: authData.userId,
+      provider: authData.provider,
+      providerId: authData.providerId,
+      hashedPassword: authData.hashedPassword,
+      isActive: authData.isActive,
+      createdAt: authData.createdAt,
+      updatedAt: authData.updatedAt
+    });
   }
 
   async createAuthentication(userAuth: UserAuthentication): Promise<ValidationResult> {
-    const validation = userAuth.validate();
-    if (!validation.valid) {
-      return validation;
-    }
-
-    const client = await this.getClient();
     try {
-      const result = await client.query(
-        `INSERT INTO user_authentications (id, "userId", provider, "providerId", "hashedPassword", "isActive", "createdAt", "updatedAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
-        [
-          userAuth.id,
-          userAuth.userId,
-          userAuth.provider,
-          userAuth.providerId,
-          userAuth.hashedPassword,
-          userAuth.isActive
-        ]
-      );
-      
+      await this.prisma.userAuthentication.create({
+        data: {
+          userId: userAuth.userId,
+          provider: userAuth.provider,
+          providerId: userAuth.providerId,
+          hashedPassword: userAuth.hashedPassword || null,
+          isActive: userAuth.isActive
+        }
+      });
       return ValidationResult.success();
     } catch (error: any) {
-      // Handle foreign key constraint violations
-      if (error.code === '23503' && error.constraint === 'user_authentications_userId_fkey') {
-        return new ValidationResult(false, [
+      if (error.code === 'P2002') { // Unique constraint violation
+        return ValidationResult.failure([
+          new ValidationError('provider', 'Authentication with this provider already exists')
+        ]);
+      }
+      if (error.code === 'P2003') { // Foreign key constraint violation
+        return ValidationResult.failure([
           new ValidationError('userId', 'User does not exist')
         ]);
       }
-      
-      // Handle unique constraint violations
-      if (error.code === '23505' && error.constraint === 'user_authentications_provider_providerId_unique') {
-        return new ValidationResult(false, [
-          new ValidationError('provider', 'Authentication already exists for this provider')
-        ]);
-      }
-      
-      return new ValidationResult(false, [
-        new ValidationError('database', 'Failed to create user authentication')
-      ]);
-    } finally {
-      this.releaseClient(client);
+      throw error;
     }
   }
 
   async updateAuthentication(userAuth: UserAuthentication): Promise<ValidationResult> {
-    const validation = userAuth.validate();
-    if (!validation.valid) {
-      return validation;
-    }
-
-    if (!userAuth.hasValidId()) {
-      return new ValidationResult(false, [
-        new ValidationError('id', 'Authentication ID is required for update')
-      ]);
-    }
-
-    const client = await this.getClient();
     try {
-      const result = await client.query(
-        `UPDATE user_authentications SET "userId" = $2, provider = $3, "providerId" = $4, "hashedPassword" = $5, "isActive" = $6, "updatedAt" = NOW()
-         WHERE id = $1`,
-        [
-          userAuth.id,
-          userAuth.userId,
-          userAuth.provider,
-          userAuth.providerId,
-          userAuth.hashedPassword,
-          userAuth.isActive,
-        ]
-      );
-      
-      if (result.rowCount === 0) {
-        return new ValidationResult(false, [
-          new ValidationError('id', 'User authentication not found')
+      if (!userAuth.id) {
+        return ValidationResult.failure([
+          new ValidationError('id', 'Authentication ID is required for update')
         ]);
       }
-      
+
+      await this.prisma.userAuthentication.update({
+        where: { id: userAuth.id },
+        data: {
+          provider: userAuth.provider,
+          providerId: userAuth.providerId,
+          hashedPassword: userAuth.hashedPassword || null,
+          isActive: userAuth.isActive
+        }
+      });
       return ValidationResult.success();
     } catch (error: any) {
-      return new ValidationResult(false, [
-        new ValidationError('database', 'Failed to update user authentication')
-      ]);
-    } finally {
-      this.releaseClient(client);
+      if (error.code === 'P2002') { // Unique constraint violation
+        return ValidationResult.failure([
+          new ValidationError('provider', 'Authentication with this provider already exists')
+        ]);
+      }
+      if (error.code === 'P2025') { // Record not found
+        return ValidationResult.failure([
+          new ValidationError('id', 'Authentication not found')
+        ]);
+      }
+      throw error;
     }
   }
 
   async deleteAuthentication(id: string): Promise<ValidationResult> {
-    const client = await this.getClient();
     try {
-      const result = await client.query('DELETE FROM user_authentications WHERE id = $1', [id]);
-      
-      if (result.rowCount === 0) {
-        return new ValidationResult(false, [
-          new ValidationError('id', 'User authentication not found')
-        ]);
-      }
-      
+      await this.prisma.userAuthentication.delete({
+        where: { id }
+      });
       return ValidationResult.success();
     } catch (error: any) {
-      return new ValidationResult(false, [
-        new ValidationError('database', 'Failed to delete user authentication')
-      ]);
-    } finally {
-      this.releaseClient(client);
+      if (error.code === 'P2025') { // Record not found
+        return ValidationResult.failure([
+          new ValidationError('id', 'Authentication not found')
+        ]);
+      }
+      throw error;
     }
   }
 
   async findUserWithAuthentication(email: string, provider: string): Promise<{ user: User; authentication: UserAuthentication } | null> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        `SELECT u.id as "user_id", u.email as "user_email", u."firstName" as "user_firstName", u."lastName" as "user_lastName", u."isActive" as "user_isActive", u."isAdmin" as "user_isAdmin", u."createdAt" as "user_createdAt", u."updatedAt" as "user_updatedAt",
-         ua.id as "auth_id", ua."userId" as "auth_userId", ua.provider as "auth_provider", ua."providerId" as "auth_providerId", ua."hashedPassword" as "auth_hashedPassword", ua."isActive" as "auth_isActive", ua."createdAt" as "auth_createdAt", ua."updatedAt" as "auth_updatedAt"
-         FROM users u 
-         JOIN user_authentications ua ON u.id = ua."userId" 
-         WHERE u.email = $1 AND ua.provider = $2`,
-        [email.toLowerCase(), provider]
-      );
-      
-      if (result.rows.length === 0) {
-        console.log(`No user found with email: ${email} and provider: ${provider}`);
-        return null;
+    const authData = await this.prisma.userAuthentication.findUnique({
+      where: {
+        provider_providerId: {
+          provider,
+          providerId: email.toLowerCase()
+        }
+      },
+      include: {
+        user: true
       }
-      
-      const row = result.rows[0];
-      console.log(`Found user row: ${JSON.stringify(row)}`);
-      
-      const user = new User(
-        row.user_id,
-        row.user_email,
-        row.user_firstName,
-        row.user_lastName,
-        row.user_isActive,
-        row.user_isAdmin,
-        row.user_createdAt,
-        row.user_updatedAt
-      );
-      
-      const authentication = new UserAuthentication(
-        row.auth_id,
-        row.auth_userId,
-        row.auth_provider,
-        row.auth_providerId,
-        row.auth_hashedPassword,
-        row.auth_isActive,
-        row.auth_createdAt,
-        row.auth_updatedAt
-      );
-      
-      console.log(`Created user: ${JSON.stringify(user)}`);
-      console.log(`Created authentication: ${JSON.stringify(authentication)}`);
-      console.log(`Authentication hashedPassword: ${authentication.hashedPassword}`);
-      console.log(`Authentication userId: ${authentication.userId}`);
-      console.log(`Authentication providerId: ${authentication.providerId}`);
-      
-      return { user, authentication };
-    } finally {
-      this.releaseClient(client);
-    }
+    });
+
+    if (!authData || !authData.user) return null;
+
+    const user = User.fromData({
+      id: authData.user.id,
+      email: authData.user.email,
+      firstName: authData.user.firstName,
+      lastName: authData.user.lastName,
+      isActive: authData.user.isActive,
+      isAdmin: authData.user.isAdmin,
+      createdAt: authData.user.createdAt,
+      updatedAt: authData.user.updatedAt
+    });
+
+    const authentication = UserAuthentication.fromData({
+      id: authData.id,
+      userId: authData.userId,
+      provider: authData.provider,
+      providerId: authData.providerId,
+      hashedPassword: authData.hashedPassword,
+      isActive: authData.isActive,
+      createdAt: authData.createdAt,
+      updatedAt: authData.updatedAt
+    });
+
+    return { user, authentication };
   }
 }

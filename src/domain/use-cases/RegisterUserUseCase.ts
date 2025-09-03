@@ -33,10 +33,9 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       );
     }
 
-    // Create user entity
-    const userId = uuidv4();
+    // Create user entity (let Prisma generate the ID)
     const user = new User(
-      userId,
+      undefined, // Let Prisma generate the ID
       command.email.toLowerCase(), // Ensure consistent lowercase email
       command.firstName,
       command.lastName,
@@ -60,11 +59,10 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(command.password, saltRounds);
 
-    // Create user authentication entity
-    const authId = uuidv4();
+    // Create user authentication entity using the actual created user ID
     const userAuth = new UserAuthentication(
-      authId,
-      userId,
+      undefined, // Let Prisma generate the ID
+      createdUser.id!, // Use the actual user ID from database
       'email',
       command.email.toLowerCase(),
       hashedPassword,
@@ -74,8 +72,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     // Validate authentication entity
     const authValidation = userAuth.validate();
     if (!authValidation.valid) {
-      // If authentication fails, we should clean up the created user
-      await this.userRepository.delete(userId);
+      // No manual cleanup needed - Prisma transaction will automatically rollback
       throw new ValidationDomainError(
         'User authentication validation failed',
         authValidation.errors
@@ -85,8 +82,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     // Create authentication in database
     const createAuthResult = await this.userRepository.createAuthentication(userAuth);
     if (!createAuthResult.valid) {
-      // If authentication creation fails, clean up the user
-      await this.userRepository.delete(userId);
+      // No manual cleanup needed - Prisma transaction will automatically rollback
       throw new ValidationDomainError(
         'Authentication creation failed',
         createAuthResult.errors

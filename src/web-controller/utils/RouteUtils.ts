@@ -1,8 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
 import { UseCase } from '@/domain/types/UseCase';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
-import { TransactionHelper } from '@/data-access/utils/TransactionHelper';
+import { PrismaTransactionHelper } from '@/data-access/utils/PrismaTransactionHelper';
 import { Context } from '@/shared/types/ValidationTypes';
 import { logger } from '../services/LoggingService';
 
@@ -13,8 +13,8 @@ import { logger } from '../services/LoggingService';
 export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCommand, TResponse>>(
   router: Router,
   path: string,
-  pool: Pool,
-  useCaseFactory: (client?: any) => TUseCase,
+  prisma: PrismaClient,
+  useCaseFactory: (prismaTransaction?: any) => TUseCase,
   responseHandler?: (result: TResponse, req: Request, res: Response) => void
 ): void {
   // Create a sample use case instance to determine properties
@@ -29,7 +29,7 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
     : AuthMiddleware.authenticate;
 
   // Create transaction helper
-  const transactionHelper = new TransactionHelper(pool);
+  const transactionHelper = new PrismaTransactionHelper(prisma);
 
   // Setup the route with proper middleware chain
   router[method](path, authMiddleware, wrapAsync(async (req: Request, res: Response, next: NextFunction) => {
