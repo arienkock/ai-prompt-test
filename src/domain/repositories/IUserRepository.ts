@@ -1,6 +1,6 @@
 import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
-import { ValidationResult, PaginationParams } from '../../shared/types/ValidationTypes';
+import { ValidationResult, PaginationParams, PaginatedResults } from '../../shared/types/ValidationTypes';
 
 export interface IUserRepository {
   // User operations
@@ -9,7 +9,7 @@ export interface IUserRepository {
   create(user: User): Promise<User>;
   update(user: User): Promise<ValidationResult>;
   delete(id: string): Promise<ValidationResult>;
-  list(pagination: PaginationParams): Promise<User[]>;
+  list(pagination: PaginationParams): Promise<PaginatedResults<User>>;
   
   // User authentication operations
   findAuthenticationByUserId(userId: string, provider?: string): Promise<UserAuthentication[]>;

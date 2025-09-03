@@ -4,6 +4,8 @@
  * Instead they MUST use DTO types that have a subset of the fields of the entities.
  */
 
+import { PaginationMeta, PaginationParams } from '../../shared/types/ValidationTypes';
+
 // User DTOs
 export interface UserDto {
   id: string;
@@ -64,4 +66,17 @@ export interface DeleteUserCommandDto {
 // Delete user response DTO
 export interface DeleteUserResponseDto {
   message: string;
+}
+
+// Get all users query DTO
+export interface GetAllUsersQueryDto {
+  pagination?: PaginationParams;
+  // Future filter parameters can be added here
+  // filters?: UserFilterDto;
+}
+
+// Get all users response DTO
+export interface GetAllUsersResponseDto {
+  users: UserDto[];
+  meta: PaginationMeta;
 }

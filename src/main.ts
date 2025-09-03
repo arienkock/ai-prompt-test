@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { Database } from './data-access/config/database';
 import { MigrationRunner } from './data-access/migrations/MigrationRunner';
 import { AuthRoutes } from './web-controller/routes/AuthRoutes';
+import { UserRoutes } from './web-controller/routes/UserRoutes';
 import { ErrorHandler } from './web-controller/middleware/ErrorHandler';
 import { logger } from './web-controller/services/LoggingService';
 
@@ -34,6 +35,10 @@ app.get('/api/health', (req, res) => {
 // Authentication routes
 const authRoutes = new AuthRoutes(database.getPool());
 app.use('/api/auth', authRoutes.getRouter());
+
+// User management routes
+const userRoutes = new UserRoutes(database.getPool());
+app.use('/api/users', userRoutes.getRouter());
 
 // Serve static files from frontend build
 const frontendDistPath = path.join(__dirname, '../frontend/dist');

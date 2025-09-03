@@ -72,3 +72,10 @@ export class PaginationMeta {
     this.hasPrev = page > 1;
   }
 }
+
+export class PaginatedResults<T> {
+  constructor(
+    public readonly data: T[],
+    public readonly meta: PaginationMeta
+  ) {}
+}

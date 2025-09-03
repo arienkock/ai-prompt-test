@@ -2,7 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import { User } from '../../domain/entities/User';
 import { UserAuthentication } from '../../domain/entities/UserAuthentication';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
-import { ValidationResult, ValidationError, PaginationParams } from '../../shared/types/ValidationTypes';
+import { ValidationResult, ValidationError, PaginationParams, PaginatedResults, PaginationMeta } from '../../shared/types/ValidationTypes';
 import { SystemError, ValidationDomainError } from '@/domain/entities/DomainErrors';
 
 export class UserRepository implements IUserRepository {
@@ -47,19 +47,23 @@ export class UserRepository implements IUserRepository {
       }
       
       const row = result.rows[0];
-      return new User(
-        row.id,
-        row.email,
-        row.firstName,
-        row.lastName,
-        row.isActive,
-        row.isAdmin,
-        row.createdAt,
-        row.updatedAt
-      );
+      return this.rowToUser(row);
     } finally {
       this.releaseClient(client);
     }
+  }
+
+  private rowToUser(row: any): User {
+    return new User(
+      row.id,
+      row.email,
+      row.firstName,
+      row.lastName,
+      row.isActive,
+      row.isAdmin,
+      row.createdAt,
+      row.updatedAt
+    );
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -75,16 +79,7 @@ export class UserRepository implements IUserRepository {
       }
       
       const row = result.rows[0];
-      return new User(
-        row.id,
-        row.email,
-        row.firstName,
-        row.lastName,
-        row.isActive,
-        row.isAdmin,
-        row.createdAt,
-        row.updatedAt
-      );
+      return this.rowToUser(row);
     } finally {
       this.releaseClient(client);
     }
@@ -107,16 +102,7 @@ export class UserRepository implements IUserRepository {
       );
       
       const row = result.rows[0];
-      return new User(
-        row.id,
-        row.email,
-        row.firstName,
-        row.lastName,
-        row.isActive,
-        row.isAdmin,
-        row.createdAt,
-        row.updatedAt
-      );
+      return this.rowToUser(row);
     } catch (error: any) {
       // Handle unique constraint violations
       if (error.code === '23505' && error.constraint === 'users_email_unique') {
@@ -145,7 +131,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `UPDATE users SET email = $2, "firstName" = $3, "lastName" = $4, "isActive" = $5, "isAdmin" = $6, "updatedAt" = $7 
+        `UPDATE users SET email = $2, "firstName" = $3, "lastName" = $4, "isActive" = $5, "isAdmin" = $6, "updatedAt" = NOW()
          WHERE id = $1`,
         [
           user.id,
@@ -154,7 +140,6 @@ export class UserRepository implements IUserRepository {
           user.lastName,
           user.isActive,
           user.isAdmin,
-          new Date()
         ]
       );
       
@@ -205,25 +190,24 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async list(pagination: PaginationParams): Promise<User[]> {
+  async list(pagination: PaginationParams): Promise<PaginatedResults<User>> {
     const client = await this.getClient();
     try {
+      // Get total count of users
+      const countResult = await client.query('SELECT COUNT(*) FROM users');
+      const total = parseInt(countResult.rows[0].count);
+      
+      // Get paginated data
       const offset = (pagination.page - 1) * pagination.pageSize;
       const result = await client.query(
         'SELECT id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt" FROM users ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2',
         [pagination.pageSize, offset]
       );
       
-      return result.rows.map(row => new User(
-        row.id,
-        row.email,
-        row.firstName,
-        row.lastName,
-        row.isActive,
-        row.isAdmin,
-        row.createdAt,
-        row.updatedAt
-      ));
+      const users = result.rows.map(row => this.rowToUser(row));
+      const meta = new PaginationMeta(total, pagination.page, pagination.pageSize);
+      
+      return new PaginatedResults(users, meta);
     } finally {
       this.releaseClient(client);
     }
@@ -347,7 +331,7 @@ export class UserRepository implements IUserRepository {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `UPDATE user_authentications SET "userId" = $2, provider = $3, "providerId" = $4, "hashedPassword" = $5, "isActive" = $6, "updatedAt" = $7 
+        `UPDATE user_authentications SET "userId" = $2, provider = $3, "providerId" = $4, "hashedPassword" = $5, "isActive" = $6, "updatedAt" = NOW()
          WHERE id = $1`,
         [
           userAuth.id,
@@ -356,7 +340,6 @@ export class UserRepository implements IUserRepository {
           userAuth.providerId,
           userAuth.hashedPassword,
           userAuth.isActive,
-          new Date()
         ]
       );
       
