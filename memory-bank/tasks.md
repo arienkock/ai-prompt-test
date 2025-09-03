@@ -25,6 +25,5 @@ This is a TODO list  tasks for this project:
     - [ ] use case validates entity, not repo.
     - [ ] repository method names should always start with `find`, `update`, `create`, `delete`.
     - [X] repository methods should return either an entity or a paginated list.
-    - [ ] always use existing pagination data structures in `list` and `find` repo methods that return sets
     - [ ] always use the routeToUseCase helper for use cases that need to access the database
 

@@ -15,13 +15,14 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
   path: string,
   prisma: PrismaClient,
   useCaseFactory: (prismaTransaction?: any) => TUseCase,
-  responseHandler?: (result: TResponse, req: Request, res: Response) => void
+  responseHandler?: (result: TResponse, req: Request, res: Response) => void,
+  httpMethod?: 'get' | 'post' | 'put' | 'patch' | 'delete'
 ): void {
   // Create a sample use case instance to determine properties
   const sampleUseCase = useCaseFactory();
   
-  // Determine HTTP method based on use case type
-  const method = sampleUseCase.isRead() ? 'get' : 'post';
+  // Determine HTTP method based on explicit parameter or use case type
+  const method = httpMethod || (sampleUseCase.isRead() ? 'get' : 'post');
   
   // Determine authentication middleware based on use case visibility
   const authMiddleware = sampleUseCase.isPublic() 
@@ -54,8 +55,15 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
         // Add userId from authenticated user if available
         ...(req.user?.userId && { userId: req.user.userId })
       } as TCommand;
+    } else if (method === 'delete') {
+      // For delete operations, use route parameters as the primary source
+      command = {
+        ...req.params,
+        // Merge any additional data from request body if needed
+        ...req.body
+      } as TCommand;
     } else {
-      // For write operations, use request body
+      // For other write operations (post, put, patch), use request body
       command = req.body as TCommand;
     }
 
