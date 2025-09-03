@@ -5,7 +5,7 @@ import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
 import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
-import { ValidationDomainError, ConflictDomainError } from '../entities/DomainErrors';
+import { ValidationDomainError, ConflictDomainError, SystemError } from '../entities/DomainErrors';
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
 
 export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, RegisterUserResponseDto> {
@@ -41,9 +41,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       command.firstName,
       command.lastName,
       true, // isActive = true by default
-      false, // isAdmin = false by default
-      new Date(), // createdAt
-      new Date()  // updatedAt
+      false // isAdmin = false by default
     );
 
     // Validate user entity as per architecture rules
@@ -56,13 +54,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     }
 
     // Create user in database
-    const createUserResult = await this.userRepository.create(user);
-    if (!createUserResult.valid) {
-      throw new ValidationDomainError(
-        'User creation failed',
-        createUserResult.errors
-      );
-    }
+    const createdUser = await this.userRepository.create(user);
 
     // Hash password
     const saltRounds = 12;
@@ -77,8 +69,6 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       command.email.toLowerCase(),
       hashedPassword,
       true, // isActive = true by default
-      new Date(), // createdAt
-      new Date()  // updatedAt
     );
 
     // Validate authentication entity
@@ -102,19 +92,18 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
         createAuthResult.errors
       );
     }
-
     // Return DTO response
     return {
       message: 'User registered successfully',
       user: {
-        id: user.id!,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isActive: user.isActive,
-        isAdmin: user.isAdmin,
-        createdAt: user.createdAt?.toISOString(),
-        updatedAt: user.updatedAt?.toISOString()
+        id: createdUser.id!,
+        email: createdUser.email,
+        firstName: createdUser.firstName,
+        lastName: createdUser.lastName,
+        isActive: createdUser.isActive,
+        isAdmin: createdUser.isAdmin,
+        createdAt: createdUser.createdAt?.toISOString(),
+        updatedAt: createdUser.updatedAt?.toISOString()
       },
       accessToken: '', // These will be filled by the web controller
       refreshToken: ''

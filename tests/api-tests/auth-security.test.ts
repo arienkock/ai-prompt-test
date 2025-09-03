@@ -30,6 +30,8 @@ describe('Authentication Security Tests', () => {
       expect(response.body.user.firstName).toBe(testUserData.firstName);
       expect(response.body.user.lastName).toBe(testUserData.lastName);
       expect(response.body.user.isActive).toBe(true);
+      expect(response.body.user.createdAt).toBeTruthy();
+      expect(response.body.user.updatedAt).toBeTruthy();
 
       // Verify tokens are strings
       expect(typeof response.body.accessToken).toBe('string');

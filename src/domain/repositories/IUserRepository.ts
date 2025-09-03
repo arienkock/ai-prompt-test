@@ -6,7 +6,7 @@ export interface IUserRepository {
   // User operations
   findById(id: string, opts?: { includeRelations?: string[] }): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  create(user: User): Promise<ValidationResult>;
+  create(user: User): Promise<User>;
   update(user: User): Promise<ValidationResult>;
   delete(id: string): Promise<ValidationResult>;
   list(pagination: PaginationParams): Promise<User[]>;

@@ -3,6 +3,7 @@ import { User } from '../../domain/entities/User';
 import { UserAuthentication } from '../../domain/entities/UserAuthentication';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { ValidationResult, ValidationError, PaginationParams } from '../../shared/types/ValidationTypes';
+import { SystemError, ValidationDomainError } from '@/domain/entities/DomainErrors';
 
 export class UserRepository implements IUserRepository {
   private pool: Pool;
@@ -89,41 +90,41 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async create(user: User): Promise<ValidationResult> {
-    const validation = user.validate();
-    if (!validation.valid) {
-      return validation;
-    }
-
+  async create(user: User): Promise<User> {
     const client = await this.getClient();
     try {
       const result = await client.query(
         `INSERT INTO users (id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id, email, "firstName", "lastName", "isActive", "isAdmin", "createdAt", "updatedAt"`,
         [
           user.id,
           user.email.toLowerCase(),
           user.firstName,
           user.lastName,
           user.isActive,
-          user.isAdmin,
-          new Date(),
-          new Date()
+          user.isAdmin
         ]
       );
       
-      return ValidationResult.success();
+      const row = result.rows[0];
+      return new User(
+        row.id,
+        row.email,
+        row.firstName,
+        row.lastName,
+        row.isActive,
+        row.isAdmin,
+        row.createdAt,
+        row.updatedAt
+      );
     } catch (error: any) {
       // Handle unique constraint violations
       if (error.code === '23505' && error.constraint === 'users_email_unique') {
-        return new ValidationResult(false, [
+        throw new ValidationDomainError("Database constraint violation", [
           new ValidationError('email', 'Email address already exists')
         ]);
       }
-      
-      return new ValidationResult(false, [
-        new ValidationError('database', 'Failed to create user')
-      ]);
+      throw error      
     } finally {
       this.releaseClient(client);
     }
@@ -296,16 +297,14 @@ export class UserRepository implements IUserRepository {
     try {
       const result = await client.query(
         `INSERT INTO user_authentications (id, "userId", provider, "providerId", "hashedPassword", "isActive", "createdAt", "updatedAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
         [
           userAuth.id,
           userAuth.userId,
           userAuth.provider,
           userAuth.providerId,
           userAuth.hashedPassword,
-          userAuth.isActive,
-          new Date(),
-          new Date()
+          userAuth.isActive
         ]
       );
       
