@@ -7,18 +7,16 @@ import { ValidationResult, ValidationError, Context } from '@/shared/types/Valid
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, ConflictDomainError, SystemError } from '../entities/DomainErrors';
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
+import { CrudType } from '../types/CrudType';
 
 export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, RegisterUserResponseDto> {
   private userRepository: IUserRepository;
 
+  static readonly crudType = CrudType.CREATE;
+  static readonly isPublic = true;
+
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
-  }
-  isRead(): Boolean {
-    return false
-  }
-  isPublic(): Boolean {
-    return true
   }
 
   async execute(context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> {

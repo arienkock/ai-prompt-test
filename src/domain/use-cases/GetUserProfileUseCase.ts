@@ -3,20 +3,16 @@ import { ValidationError, Context } from '@/shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, NotFoundDomainError, AuthorizationDomainError } from '../entities/DomainErrors';
 import { GetUserProfileQueryDto, GetUserProfileResponseDto } from '../types/Dtos';
+import { CrudType } from '../types/CrudType';
 
 export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, GetUserProfileResponseDto> {
   private userRepository: IUserRepository;
 
+  static readonly crudType = CrudType.READ;
+  static readonly isPublic = false;
+
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
-  }
-
-  isRead(): Boolean {
-    return true;
-  }
-
-  isPublic(): Boolean {
-    return false;
   }
 
   async execute(context: Context, query: GetUserProfileQueryDto): Promise<GetUserProfileResponseDto> {

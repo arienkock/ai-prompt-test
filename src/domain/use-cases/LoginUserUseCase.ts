@@ -4,18 +4,16 @@ import { ValidationError, Context } from '@/shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, AuthenticationDomainError } from '../entities/DomainErrors';
 import { LoginUserCommandDto, LoginUserResponseDto } from '../types/Dtos';
+import { CrudType } from '../types/CrudType';
 
 export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserResponseDto> {
   private userRepository: IUserRepository;
 
+  static readonly crudType = CrudType.CREATE; // Creates a new session/authentication state
+  static readonly isPublic = true;
+
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
-  }
-  isRead(): Boolean {
-    return false
-  }
-  isPublic(): Boolean {
-    return true
   }
 
   async execute(context: Context, command: LoginUserCommandDto): Promise<LoginUserResponseDto> {

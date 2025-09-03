@@ -191,6 +191,7 @@ Data access is a layer of the architecture consisting of:
 
 - MUST use the transaction helper function to call a use-case within a transaction.
 - MUST NOT use any type reflection on errors to determine any error handling logic. If error handling logic needs to be conditional, that condition needs to be exposed by the domain layer.
+- All Express routes leading to a UseCase MUST make use of the `routeToUseCase` helper function. This ensures consistent transaction management, authentication middleware, logging, and error handling across all UseCase routes.
 
 ### Implementation Guidance & Examples
 

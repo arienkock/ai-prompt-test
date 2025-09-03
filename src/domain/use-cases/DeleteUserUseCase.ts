@@ -3,20 +3,16 @@ import { ValidationError, Context } from '@/shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, AuthorizationDomainError, NotFoundDomainError, AuthenticationDomainError } from '../entities/DomainErrors';
 import { DeleteUserCommandDto, DeleteUserResponseDto } from '../types/Dtos';
+import { CrudType } from '../types/CrudType';
 
 export class DeleteUserUseCase implements UseCase<DeleteUserCommandDto, DeleteUserResponseDto> {
   private userRepository: IUserRepository;
 
+  static readonly crudType = CrudType.DELETE;
+  static readonly isPublic = false;
+
   constructor(userRepository: IUserRepository) {
     this.userRepository = userRepository;
-  }
-
-  isRead(): Boolean {
-    return false;
-  }
-
-  isPublic(): Boolean {
-    return false; // Private endpoint - requires authentication
   }
 
   async execute(context: Context, command: DeleteUserCommandDto): Promise<DeleteUserResponseDto> {

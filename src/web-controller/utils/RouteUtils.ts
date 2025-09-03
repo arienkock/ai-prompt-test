@@ -1,10 +1,24 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { UseCase } from '@/domain/types/UseCase';
+import { UseCase, UseCaseConstructor } from '@/domain/types/UseCase';
+import { CrudType } from '@/domain/types/CrudType';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { PrismaTransactionHelper } from '@/data-access/utils/PrismaTransactionHelper';
 import { Context } from '@/shared/types/ValidationTypes';
 import { logger } from '../services/LoggingService';
+
+/**
+ * Map CRUD type to HTTP method
+ */
+function mapCrudTypeToHttpMethod(crudType: CrudType): 'get' | 'post' | 'put' | 'patch' | 'delete' {
+  switch (crudType) {
+    case CrudType.CREATE: return 'post';
+    case CrudType.READ: return 'get';
+    case CrudType.UPDATE: return 'put';
+    case CrudType.DELETE: return 'delete';
+    default: return 'post';
+  }
+}
 
 /**
  * Utility function to setup routes with use cases following the architecture pattern
@@ -18,14 +32,17 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
   responseHandler?: (result: TResponse, req: Request, res: Response) => void,
   httpMethod?: 'get' | 'post' | 'put' | 'patch' | 'delete'
 ): void {
-  // Create a sample use case instance to determine properties
-  const sampleUseCase = useCaseFactory();
+  // Create a sample instance to get the constructor reference
+  const sampleInstance = useCaseFactory();
+  const UseCaseClass = sampleInstance.constructor as any;
+  const crudType = UseCaseClass.crudType as CrudType;
+  const isPublic = UseCaseClass.isPublic as boolean;
   
-  // Determine HTTP method based on explicit parameter or use case type
-  const method = httpMethod || (sampleUseCase.isRead() ? 'get' : 'post');
+  // Determine HTTP method based on explicit parameter or CRUD type
+  const method = httpMethod || mapCrudTypeToHttpMethod(crudType);
   
   // Determine authentication middleware based on use case visibility
-  const authMiddleware = sampleUseCase.isPublic() 
+  const authMiddleware = isPublic 
     ? AuthMiddleware.optionalAuthenticate 
     : AuthMiddleware.authenticate;
 
@@ -47,7 +64,7 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
 
     // Extract command/query from request
     let command: TCommand;
-    if (sampleUseCase.isRead()) {
+    if (crudType === CrudType.READ) {
       // For read operations, merge query params, route params, and user context
       command = { 
         ...req.query, 
