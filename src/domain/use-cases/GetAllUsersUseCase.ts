@@ -1,8 +1,8 @@
 import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationError, Context, PaginationParams } from '../../shared/types/ValidationTypes';
+import { ValidationError, Context } from '../../shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, NotFoundDomainError, AuthorizationDomainError } from '../entities/DomainErrors';
-import { GetAllUsersQueryDto, GetAllUsersResponseDto, UserDto } from '../types/Dtos';
+import { GetAllUsersQueryDto, GetAllUsersResponseDto, PaginationParams, UserDto } from '../types/Dtos';
 
 export class GetAllUsersUseCase implements UseCase<GetAllUsersQueryDto, GetAllUsersResponseDto> {
   private userRepository: IUserRepository;

@@ -10,6 +10,6 @@
     "docs/",
     "tests/"
   ],
-  "exec": "ts-node src/main.ts",
+  "exec": "ts-node -r tsconfig-paths/register src/main.ts",
   "delay": 1000
 }

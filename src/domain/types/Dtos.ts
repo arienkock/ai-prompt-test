@@ -4,8 +4,6 @@
  * Instead they MUST use DTO types that have a subset of the fields of the entities.
  */
 
-import { PaginationMeta, PaginationParams } from '../../shared/types/ValidationTypes';
-
 // User DTOs
 export interface UserDto {
   id: string;
@@ -79,4 +77,39 @@ export interface GetAllUsersQueryDto {
 export interface GetAllUsersResponseDto {
   users: UserDto[];
   meta: PaginationMeta;
+}
+
+
+// Pagination types
+export class PaginationParams {
+  public readonly page: number;
+  public readonly pageSize: number;
+
+  constructor(page: number = 1, pageSize: number = 20) {
+    this.page = Math.max(1, page);
+    this.pageSize = Math.min(Math.max(1, pageSize), 500); // Max 500 per architecture rules
+  }
+}
+
+export class PaginationMeta {
+  public readonly totalPages: number;
+  public readonly hasNext: boolean;
+  public readonly hasPrev: boolean;
+
+  constructor(
+    public readonly total: number,
+    public readonly page: number,
+    public readonly pageSize: number
+  ) {
+    this.totalPages = Math.ceil(total / pageSize);
+    this.hasNext = page < this.totalPages;
+    this.hasPrev = page > 1;
+  }
+}
+
+export class PaginatedResults<T> {
+  constructor(
+    public readonly data: T[],
+    public readonly meta: PaginationMeta
+  ) {}
 }
