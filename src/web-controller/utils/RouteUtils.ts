@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Pool } from 'pg';
-import { UseCase } from '../../domain/types/UseCase';
+import { UseCase } from '@/domain/types/UseCase';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
-import { TransactionHelper } from '../../data-access/utils/TransactionHelper';
-import { Context } from '../../shared/types/ValidationTypes';
+import { TransactionHelper } from '@/data-access/utils/TransactionHelper';
+import { Context } from '@/shared/types/ValidationTypes';
 import { logger } from '../services/LoggingService';
 
 /**

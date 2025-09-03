@@ -81,7 +81,7 @@ Entity field naming violations found:
     public readonly firstName: string;
 
   src/web-controller/routes/AuthRoutes.ts:45 - Web Controller must not directly import from data-access layer
-    import { UserRepository } from '../data-access/repositories/UserRepository';
+    import { UserRepository } from '@/data-access/repositories/UserRepository';
 ```
 
 ## Current Status

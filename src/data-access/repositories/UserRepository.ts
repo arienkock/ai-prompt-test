@@ -1,8 +1,8 @@
 import { Pool, PoolClient } from 'pg';
-import { User } from '../../domain/entities/User';
-import { UserAuthentication } from '../../domain/entities/UserAuthentication';
-import { IUserRepository } from '../../domain/repositories/IUserRepository';
-import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
+import { User } from '@/domain/entities/User';
+import { UserAuthentication } from '@/domain/entities/UserAuthentication';
+import { IUserRepository } from '@/domain/repositories/IUserRepository';
+import { ValidationResult, ValidationError } from '@/shared/types/ValidationTypes';
 import { SystemError, ValidationDomainError } from '@/domain/entities/DomainErrors';
 import { PaginatedResults, PaginationMeta, PaginationParams } from '@/domain/types/Dtos';
 

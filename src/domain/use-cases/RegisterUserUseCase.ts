@@ -3,7 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
 import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationResult, ValidationError, Context } from '../../shared/types/ValidationTypes';
+import { ValidationResult, ValidationError, Context } from '@/shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, ConflictDomainError, SystemError } from '../entities/DomainErrors';
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';

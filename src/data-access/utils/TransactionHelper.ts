@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
+import { ValidationResult, ValidationError } from '@/shared/types/ValidationTypes';
 
 export type TransactionCallback<T> = (client: PoolClient) => Promise<T>;
 

@@ -1,4 +1,4 @@
-import { Context } from '../../shared/types/ValidationTypes';
+import { Context } from '@/shared/types/ValidationTypes';
 
 /**
  * Standardized use case interface as per architecture rules

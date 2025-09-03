@@ -1,4 +1,4 @@
-import { ValidationResult } from '../../shared/types/ValidationTypes';
+import { ValidationResult } from '@/shared/types/ValidationTypes';
 import { SystemError } from './DomainErrors';
 
 /**

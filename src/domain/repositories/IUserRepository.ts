@@ -1,6 +1,6 @@
 import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
-import { ValidationResult } from '../../shared/types/ValidationTypes';
+import { ValidationResult } from '@/shared/types/ValidationTypes';
 import { PaginatedResults, PaginationParams } from '../types/Dtos';
 
 export interface IUserRepository {

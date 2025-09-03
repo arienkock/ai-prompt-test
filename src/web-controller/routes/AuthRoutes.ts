@@ -1,11 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Pool } from 'pg';
-import { RegisterUserUseCase } from '../../domain/use-cases/RegisterUserUseCase';
-import { LoginUserUseCase } from '../../domain/use-cases/LoginUserUseCase';
-import { GetUserProfileUseCase } from '../../domain/use-cases/GetUserProfileUseCase';
-import { DeleteUserUseCase } from '../../domain/use-cases/DeleteUserUseCase';
-import { UserRepository } from '../../data-access/repositories/UserRepository';
-import { jwtService } from '../../shared/services/JwtService';
+import { RegisterUserUseCase } from '@/domain/use-cases/RegisterUserUseCase';
+import { LoginUserUseCase } from '@/domain/use-cases/LoginUserUseCase';
+import { GetUserProfileUseCase } from '@/domain/use-cases/GetUserProfileUseCase';
+import { DeleteUserUseCase } from '@/domain/use-cases/DeleteUserUseCase';
+import { UserRepository } from '@/data-access/repositories/UserRepository';
+import { jwtService } from '@/shared/services/JwtService';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
 import { ErrorHandler } from '../middleware/ErrorHandler';
 import { AuthenticationDomainError } from '@/domain/entities/DomainErrors';
@@ -18,7 +18,7 @@ import {
   GetUserProfileResponseDto,
   DeleteUserCommandDto,
   DeleteUserResponseDto 
-} from '../../domain/types/Dtos';
+} from '@/domain/types/Dtos';
 import { routeToUseCase, wrapAsync } from '../utils/RouteUtils';
 
 export class AuthRoutes {
@@ -97,7 +97,7 @@ export class AuthRoutes {
       const command: DeleteUserCommandDto = { userId };
 
       // Execute use case within transaction context
-      const transactionHelper = new (await import('../../data-access/utils/TransactionHelper')).TransactionHelper(this.pool);
+      const transactionHelper = new (await import('@/data-access/utils/TransactionHelper')).TransactionHelper(this.pool);
       const result = await transactionHelper.executeUseCase<DeleteUserCommandDto, DeleteUserResponseDto, DeleteUserUseCase>(
         (client) => {
           const userRepository = new UserRepository(this.pool, client);

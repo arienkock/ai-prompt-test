@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { Pool } from 'pg';
-import { GetAllUsersUseCase } from '../../domain/use-cases/GetAllUsersUseCase';
-import { UserRepository } from '../../data-access/repositories/UserRepository';
+import { GetAllUsersUseCase } from '@/domain/use-cases/GetAllUsersUseCase';
+import { UserRepository } from '@/data-access/repositories/UserRepository';
 import { ErrorHandler } from '../middleware/ErrorHandler';
 import { 
   GetAllUsersQueryDto, 
   GetAllUsersResponseDto 
-} from '../../domain/types/Dtos';
+} from '@/domain/types/Dtos';
 import { routeToUseCase } from '../utils/RouteUtils';
 
 export class UserRoutes {

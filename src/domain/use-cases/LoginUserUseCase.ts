@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcryptjs';
 import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationError, Context } from '../../shared/types/ValidationTypes';
+import { ValidationError, Context } from '@/shared/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, AuthenticationDomainError } from '../entities/DomainErrors';
 import { LoginUserCommandDto, LoginUserResponseDto } from '../types/Dtos';

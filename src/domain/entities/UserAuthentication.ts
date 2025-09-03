@@ -1,5 +1,5 @@
 import { Entity } from './Entity';
-import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
+import { ValidationResult, ValidationError } from '@/shared/types/ValidationTypes';
 
 /**
  * UserAuthentication entity - weak entity following architecture rules:
