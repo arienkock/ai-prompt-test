@@ -92,12 +92,6 @@ export class DeleteUserUseCase implements UseCase<DeleteUserCommandDto, DeleteUs
 
     if (!command.userId || typeof command.userId !== 'string' || command.userId.trim().length === 0) {
       errors.push(new ValidationError('userId', 'User ID is required'));
-    } else {
-      // Basic UUID format validation (36 characters with hyphens)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(command.userId)) {
-        errors.push(new ValidationError('userId', 'User ID must be a valid UUID'));
-      }
     }
 
     if (errors.length !== 0) {
