@@ -41,7 +41,7 @@ export class GetAllUsersUseCase implements UseCase<GetAllUsersQueryDto, GetAllUs
     this.validatePagination(pagination);
 
     // Get paginated users from repository
-    const paginatedUsers = await this.userRepository.list(pagination);
+    const paginatedUsers = await this.userRepository.findMany(pagination);
 
     // Transform User entities to UserDTOs
     const userDtos: UserDto[] = paginatedUsers.data.map(user => {

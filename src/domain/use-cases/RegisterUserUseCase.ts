@@ -80,14 +80,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     }
 
     // Create authentication in database
-    const createAuthResult = await this.userRepository.createAuthentication(userAuth);
-    if (!createAuthResult.valid) {
-      // No manual cleanup needed - Prisma transaction will automatically rollback
-      throw new ValidationDomainError(
-        'Authentication creation failed',
-        createAuthResult.errors
-      );
-    }
+    await this.userRepository.createAuthentication(userAuth);
     // Return DTO response
     const userDto: any = {
       id: createdUser.id!,

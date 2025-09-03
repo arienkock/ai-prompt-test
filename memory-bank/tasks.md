@@ -21,10 +21,10 @@ This is a TODO list  tasks for this project:
   - [ ] server generated IDs shouldbe an option
   - [ ] Clean up README
   - new arch rules: 
-    - [ ] Always use NOW() db time for timestamps (not new Date() in the code)
+    - [X] Always use NOW() db time for timestamps (not new Date() in the code)
     - [ ] use case validates entity, not repo.
-    - [ ] repository method names should always start with `findBy`, `update`, `create`, `delete`.
-    - [ ] repository methodss should return either an entity or a paginated list.
+    - [ ] repository method names should always start with `find`, `update`, `create`, `delete`.
+    - [X] repository methods should return either an entity or a paginated list.
     - [ ] always use existing pagination data structures in `list` and `find` repo methods that return sets
     - [ ] always use the routeToUseCase helper for use cases that need to access the database
 

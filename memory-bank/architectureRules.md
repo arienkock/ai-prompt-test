@@ -156,6 +156,8 @@ Data access is a layer of the architecture consisting of:
 - If a repository method should return an entity including some relationships, then try to fetch all rows at once (using joins).
 - Create indices for common access patterns if the where clause is fixed or predictable.
 - Only apply UNIQUE constraints to columns if you are SURE they are globally unique (e.g. across all users)
+- Repository method names MUST start with `find`, `create`, `update`, or `delete` (e.g. `findById`, `findMany`, `createUser`, `updateUser`, `deleteUser`).
+- Repository methods MUST NOT return ValidationResult objects. Instead they MUST throw domain errors for preventable field errors (e.g. unique constraint violations) using ValidationDomainError, or SystemError for unexpected database issues. Record not found scenarios MUST return null, NOT throw an error.
 
 ## UI Layer
 

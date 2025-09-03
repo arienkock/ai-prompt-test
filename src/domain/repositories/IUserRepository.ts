@@ -8,16 +8,16 @@ export interface IUserRepository {
   findById(id: string, opts?: { includeRelations?: string[] }): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   create(user: User): Promise<User>;
-  update(user: User): Promise<ValidationResult>;
-  delete(id: string): Promise<ValidationResult>;
-  list(pagination: PaginationParams): Promise<PaginatedResults<User>>;
+  update(user: User): Promise<User | null>;
+  delete(id: string): Promise<void>;
+  findMany(pagination: PaginationParams): Promise<PaginatedResults<User>>;
   
   // User authentication operations
   findAuthenticationByUserId(userId: string, provider?: string): Promise<UserAuthentication[]>;
   findAuthenticationByProvider(provider: string, providerId: string): Promise<UserAuthentication | null>;
-  createAuthentication(userAuth: UserAuthentication): Promise<ValidationResult>;
-  updateAuthentication(userAuth: UserAuthentication): Promise<ValidationResult>;
-  deleteAuthentication(id: string): Promise<ValidationResult>;
+  createAuthentication(userAuth: UserAuthentication): Promise<void>;
+  updateAuthentication(userAuth: UserAuthentication): Promise<UserAuthentication | null>;
+  deleteAuthentication(id: string): Promise<void>;
   
   // User with authentication operations
   findUserWithAuthentication(email: string, provider: string): Promise<{ user: User; authentication: UserAuthentication } | null>;

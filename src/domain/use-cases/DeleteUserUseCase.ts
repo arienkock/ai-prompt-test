@@ -59,23 +59,11 @@ export class DeleteUserUseCase implements UseCase<DeleteUserCommandDto, DeleteUs
     // Delete user authentication records first (to maintain referential integrity)
     const userAuthentications = await this.userRepository.findAuthenticationByUserId(command.userId);
     for (const auth of userAuthentications) {
-      const deleteAuthResult = await this.userRepository.deleteAuthentication(auth.id!);
-      if (!deleteAuthResult.valid) {
-        throw new ValidationDomainError(
-          'Failed to delete user authentication records',
-          deleteAuthResult.errors
-        );
-      }
+      await this.userRepository.deleteAuthentication(auth.id!);
     }
 
     // Delete the user record
-    const deleteUserResult = await this.userRepository.delete(command.userId);
-    if (!deleteUserResult.valid) {
-      throw new ValidationDomainError(
-        'Failed to delete user',
-        deleteUserResult.errors
-      );
-    }
+    await this.userRepository.delete(command.userId);
 
     // Return success response
     return {

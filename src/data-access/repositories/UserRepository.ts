@@ -4,6 +4,7 @@ import { UserAuthentication } from '../../domain/entities/UserAuthentication';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
 import { PaginatedResults, PaginationParams, PaginationMeta } from '../../domain/types/Dtos';
+import { ValidationDomainError, SystemError } from '../../domain/entities/DomainErrors';
 
 export class UserRepository implements IUserRepository {
   constructor(private prisma: PrismaClient) {}
@@ -74,10 +75,10 @@ export class UserRepository implements IUserRepository {
     });
   }
 
-  async update(user: User): Promise<ValidationResult> {
+  async update(user: User): Promise<User | null> {
     try {
       if (!user.id) {
-        return ValidationResult.failure([
+        throw new ValidationDomainError('User ID is required for update', [
           new ValidationError('id', 'User ID is required for update')
         ]);
       }
@@ -93,39 +94,43 @@ export class UserRepository implements IUserRepository {
         }
       });
 
-      return ValidationResult.success();
+      return User.fromData({
+        id: userData.id,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        isActive: userData.isActive,
+        isAdmin: userData.isAdmin,
+        createdAt: userData.createdAt,
+        updatedAt: userData.updatedAt
+      });
     } catch (error: any) {
       if (error.code === 'P2002') { // Unique constraint violation
-        return ValidationResult.failure([
+        throw new ValidationDomainError('Email already exists', [
           new ValidationError('email', 'Email already exists')
         ]);
       }
       if (error.code === 'P2025') { // Record not found
-        return ValidationResult.failure([
-          new ValidationError('id', 'User not found')
-        ]);
+        return null;
       }
-      throw error;
+      throw new SystemError('Unexpected database error during user update');
     }
   }
 
-  async delete(id: string): Promise<ValidationResult> {
+  async delete(id: string): Promise<void> {
     try {
       await this.prisma.user.delete({
         where: { id }
       });
-      return ValidationResult.success();
     } catch (error: any) {
       if (error.code === 'P2025') { // Record not found
-        return ValidationResult.failure([
-          new ValidationError('id', 'User not found')
-        ]);
+        return; // Silently succeed if record not found
       }
-      throw error;
+      throw new SystemError('Unexpected database error during user deletion');
     }
   }
 
-  async list(pagination: PaginationParams): Promise<PaginatedResults<User>> {
+  async findMany(pagination: PaginationParams): Promise<PaginatedResults<User>> {
     const skip = (pagination.page - 1) * pagination.pageSize;
     
     const [users, totalCount] = await Promise.all([
@@ -204,7 +209,7 @@ export class UserRepository implements IUserRepository {
     });
   }
 
-  async createAuthentication(userAuth: UserAuthentication): Promise<ValidationResult> {
+  async createAuthentication(userAuth: UserAuthentication): Promise<void> {
     try {
       await this.prisma.userAuthentication.create({
         data: {
@@ -215,31 +220,30 @@ export class UserRepository implements IUserRepository {
           isActive: userAuth.isActive
         }
       });
-      return ValidationResult.success();
     } catch (error: any) {
       if (error.code === 'P2002') { // Unique constraint violation
-        return ValidationResult.failure([
+        throw new ValidationDomainError('Authentication with this provider already exists', [
           new ValidationError('provider', 'Authentication with this provider already exists')
         ]);
       }
       if (error.code === 'P2003') { // Foreign key constraint violation
-        return ValidationResult.failure([
+        throw new ValidationDomainError('User does not exist', [
           new ValidationError('userId', 'User does not exist')
         ]);
       }
-      throw error;
+      throw new SystemError('Unexpected database error during authentication creation');
     }
   }
 
-  async updateAuthentication(userAuth: UserAuthentication): Promise<ValidationResult> {
+  async updateAuthentication(userAuth: UserAuthentication): Promise<UserAuthentication | null> {
     try {
       if (!userAuth.id) {
-        return ValidationResult.failure([
+        throw new ValidationDomainError('Authentication ID is required for update', [
           new ValidationError('id', 'Authentication ID is required for update')
         ]);
       }
 
-      await this.prisma.userAuthentication.update({
+      const authData = await this.prisma.userAuthentication.update({
         where: { id: userAuth.id },
         data: {
           provider: userAuth.provider,
@@ -248,35 +252,40 @@ export class UserRepository implements IUserRepository {
           isActive: userAuth.isActive
         }
       });
-      return ValidationResult.success();
+
+      return UserAuthentication.fromData({
+        id: authData.id,
+        userId: authData.userId,
+        provider: authData.provider,
+        providerId: authData.providerId,
+        hashedPassword: authData.hashedPassword,
+        isActive: authData.isActive,
+        createdAt: authData.createdAt,
+        updatedAt: authData.updatedAt
+      });
     } catch (error: any) {
       if (error.code === 'P2002') { // Unique constraint violation
-        return ValidationResult.failure([
+        throw new ValidationDomainError('Authentication with this provider already exists', [
           new ValidationError('provider', 'Authentication with this provider already exists')
         ]);
       }
       if (error.code === 'P2025') { // Record not found
-        return ValidationResult.failure([
-          new ValidationError('id', 'Authentication not found')
-        ]);
+        return null;
       }
-      throw error;
+      throw new SystemError('Unexpected database error during authentication update');
     }
   }
 
-  async deleteAuthentication(id: string): Promise<ValidationResult> {
+  async deleteAuthentication(id: string): Promise<void> {
     try {
       await this.prisma.userAuthentication.delete({
         where: { id }
       });
-      return ValidationResult.success();
     } catch (error: any) {
       if (error.code === 'P2025') { // Record not found
-        return ValidationResult.failure([
-          new ValidationError('id', 'Authentication not found')
-        ]);
+        return; // Silently succeed if record not found
       }
-      throw error;
+      throw new SystemError('Unexpected database error during authentication deletion');
     }
   }
 

@@ -252,6 +252,54 @@ describe('Architecture Rules - Naming & Structure', () => {
     });
   });
 
+  describe('Repository Rules', () => {
+    test('Repository method names must start with find, create, update, or delete', () => {
+      // Scan repository implementation files
+      const repositoryFiles = scanner.scanDirectory('src/data-access/repositories');
+      
+      // Check for method names that don't follow the convention
+      const violations = scanner.checkCodePatterns(
+        repositoryFiles,
+        /async\s+(\w+)\s*\(/g,
+        'Repository method found'
+      );
+
+      const invalidMethodNames = violations.filter(v => {
+        const methodName = v.content.match(/async\s+(\w+)\s*\(/)?.[1];
+        if (!methodName) return false;
+        
+        // Skip constructor
+        if (methodName === 'constructor') return false;
+        
+        // Check if method name starts with allowed prefixes
+        const allowedPrefixes = ['find', 'create', 'update', 'delete'];
+        return !allowedPrefixes.some(prefix => methodName.startsWith(prefix));
+      });
+
+      if (invalidMethodNames.length > 0) {
+        console.error(`\n❌ Repository method naming violations found:\n\n${FileScanner.formatViolations(invalidMethodNames)}\n`);
+      }
+      expect(invalidMethodNames.length).toBe(0);
+    });
+
+    test('Repository methods must not return ValidationResult', () => {
+      // Scan repository implementation files
+      const repositoryFiles = scanner.scanDirectory('src/data-access/repositories');
+      
+      // Check for ValidationResult return types
+      const violations = scanner.checkCodePatterns(
+        repositoryFiles,
+        /:\s*Promise<ValidationResult>/g,
+        'Repository methods must not return ValidationResult - use domain errors instead'
+      );
+
+      if (violations.length > 0) {
+        console.error(`\n❌ Repository ValidationResult violations found:\n\n${FileScanner.formatViolations(violations)}\n`);
+      }
+      expect(violations.length).toBe(0);
+    });
+  });
+
 });
 
 // Helper function to extract Context definition block
