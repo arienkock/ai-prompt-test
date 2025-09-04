@@ -72,7 +72,11 @@ class AuthService {
       async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Check if this is an authentication endpoint (login/register)
+        const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
+                              originalRequest?.url?.includes('/auth/register');
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           originalRequest._retry = true;
 
           try {
