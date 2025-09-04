@@ -22,8 +22,8 @@ This is a TODO list  tasks for this project:
   - [ ] Clean up README
   - new arch rules: 
     - [X] Always use NOW() db time for timestamps (not new Date() in the code)
-    - [ ] use case validates entity, not repo.
-    - [ ] repository method names should always start with `find`, `update`, `create`, `delete`.
+    - [X] use case validates entity, not repo.
+    - [X] repository method names should always start with `find`, `update`, `create`, `delete`.
     - [X] repository methods should return either an entity or a paginated list.
     - [X] always use the routeToUseCase helper for use cases that need to access the database
 

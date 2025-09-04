@@ -41,10 +41,10 @@ export function routeToUseCase<TCommand, TResponse>(
   } = useCase
   // Determine HTTP method based on explicit parameter or CRUD type
   const method = mapCrudTypeToHttpMethod(crudType);
-  
+
   // Determine authentication middleware based on use case visibility
-  const authMiddleware = isPublic 
-    ? authMwSupplier.optionalAuthenticate 
+  const authMiddleware = isPublic
+    ? authMwSupplier.optionalAuthenticate
     : authMwSupplier.authenticate;
 
   // Create transaction helper
@@ -54,22 +54,22 @@ export function routeToUseCase<TCommand, TResponse>(
   router[method](path, authMiddleware, wrapAsync(async (req: Request, res: Response) => {
     const logger = req.context!.app.logger as pino.Logger
     // Log incoming context and DTO at debug level
-    logger.debug({ 
+    logger.debug({
       route: path,
       method: method.toUpperCase(),
-      context: req.context,
+      context: Object.assign({}, req.context, { app: null }),
       user: req.user,
       body: req.body,
       query: req.query,
       params: req.params,
     }, `Incoming request for ${method.toUpperCase()} ${path}`);
 
-    // Extract command/query from request
+    // Extract   command/query from request
     let command: TCommand;
     if (crudType === CrudType.READ) {
       // For read operations, merge query params, route params, and user context
-      command = { 
-        ...req.query, 
+      command = {
+        ...req.query,
         ...req.params,
         // Add userId from authenticated user if available
         ...(req.user?.userId && { userId: req.user.userId })
