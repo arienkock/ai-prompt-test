@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { DomainError, DomainErrorCode, ValidationDomainError } from '@/domain/entities/DomainErrors';
-import { logger } from '../services/LoggingService';
+import pino from 'pino';
 
 /**
  * Unified error response format
@@ -25,7 +25,8 @@ export class ErrorHandler {
    * Must be the last middleware in the chain
    */
   static handle(error: any, req: Request, res: Response, next: NextFunction): void {
-    logger.error(error, 'Error caught by unified error handler:')
+    const logger = req.context!.app.logger
+    logger.error('Error caught by unified error handler: %o', error)
 
     // Handle domain errors with proper status code mapping
     if (error instanceof DomainError) {

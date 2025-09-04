@@ -7,7 +7,6 @@ import { ValidationDomainError, ConflictDomainError, SystemError } from '../enti
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
 import { CrudType } from '../types/CrudType';
 import { Context } from '../types/Context';
-import { logger } from '@/web-controller/services/LoggingService';
 
 export const RegisterUserUseCase: UseCase<RegisterUserCommandDto, RegisterUserResponseDto> = Object.assign(
   async (context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> => {

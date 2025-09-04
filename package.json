@@ -12,7 +12,7 @@
     "dev:backend": "dotenv -e .env.local -- npx prisma migrate deploy && LOG_LEVEL=debug NODE_ENV=development dotenv -e .env.local -- nodemon",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:both": "concurrently --names \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "test": "NODE_ENV=test LOG_LEVEL=debug jest",
+    "test": "NODE_ENV=test LOG_LEVEL=info jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

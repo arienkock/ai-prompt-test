@@ -82,7 +82,7 @@ export const AuthRoutes = {
         message: 'Logout successful'
       });
     }
-    router.post('/refresh', authMiddlewareProvider.requireContext, refresh);
+    router.post('/refresh', refresh);
     router.post('/logout', authMiddlewareProvider.authenticate, logout);
 
     // Health check

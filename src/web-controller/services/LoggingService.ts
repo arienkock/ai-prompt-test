@@ -1,11 +1,8 @@
 import pino from 'pino';
 
-class LoggingService {
-  private static instance: LoggingService;
-  private logger: pino.Logger;
 
-  private constructor() {
-    this.logger = pino({
+export const CreateLogger = () => {
+    const logger = pino({
       level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
       transport: {
         target: 'pino-pretty',
@@ -16,21 +13,5 @@ class LoggingService {
         },
       },
     });
-
-    // You can add more specific child loggers if needed
-    // e.g., this.logger.child({ module: 'web-controller' });
+    return logger
   }
-
-  public static getInstance(): LoggingService {
-    if (!LoggingService.instance) {
-      LoggingService.instance = new LoggingService();
-    }
-    return LoggingService.instance;
-  }
-
-  public getLogger(): pino.Logger {
-    return this.logger;
-  }
-}
-
-export const logger = LoggingService.getInstance().getLogger();

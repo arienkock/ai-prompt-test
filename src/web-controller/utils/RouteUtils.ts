@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { UseCase } from '@/domain/types/UseCase';
 import { CrudType } from '@/domain/types/CrudType';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
-import { logger } from '../services/LoggingService';
+import pino from 'pino';
 
 /**
  * Map CRUD type to HTTP method
@@ -52,6 +52,7 @@ export function routeToUseCase<TCommand, TResponse>(
 
   // Setup the route with proper middleware chain
   router[method](path, authMiddleware, wrapAsync(async (req: Request, res: Response) => {
+    const logger = req.context!.app.logger as pino.Logger
     // Log incoming context and DTO at debug level
     logger.debug({ 
       route: path,

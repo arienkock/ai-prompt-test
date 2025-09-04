@@ -17,7 +17,16 @@ interface Repositories {
 
 type TxCallback = (r: Repositories) => void
 
+type LoggerFn = (message: string, ...restArgs: any) => void
+
+interface Logger {
+  info: LoggerFn,
+  error: LoggerFn,
+  debug: LoggerFn
+}
+
 export interface AppContext extends Repositories {
+  logger: Logger
   init(): Promise<void>
   shutdown(): Promise<void>
   transactionally: (cb: TxCallback) => void

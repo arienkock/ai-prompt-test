@@ -44,10 +44,8 @@ export class AuthMiddleware {
         email: payload.email
       };
 
-      // Create context for the request
-      req.context = this.appContext.createRequestContext()
-      req.context.userId = payload.userId
-      
+      req.context!.userId = payload.userId
+
       next();
     } catch (error) {
       // Pass any error to the unified error handler
@@ -62,7 +60,6 @@ export class AuthMiddleware {
     try {
       const authHeader = req.headers.authorization;
       const token = jwtService.extractTokenFromHeader(authHeader);
-      req.context = this.appContext.createRequestContext()
 
       if (token) {
         const payload = jwtService.verifyAccessToken(token);
@@ -71,7 +68,7 @@ export class AuthMiddleware {
             userId: payload.userId,
             email: payload.email
           };
-          req.context.userId = payload.userId
+          req.context!.userId = payload.userId
         }
       }
 
@@ -80,15 +77,5 @@ export class AuthMiddleware {
       // Even if there's an error, continue without authentication
       next();
     }
-  }
-
-  /**
-   * Middleware to ensure user has valid context
-   */
-  requireContext(req: Request, res: Response, next: NextFunction): void {
-    if (!req.context) {
-      req.context = this.appContext.createRequestContext()
-    }
-    next();
   }
 }
