@@ -1,30 +1,21 @@
-import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../entities/User';
 import { UserAuthentication } from '../entities/UserAuthentication';
-import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationResult, ValidationError, Context } from '@/shared/types/ValidationTypes';
+import { ValidationError } from '@/domain/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, ConflictDomainError, SystemError } from '../entities/DomainErrors';
 import { RegisterUserCommandDto, RegisterUserResponseDto } from '../types/Dtos';
 import { CrudType } from '../types/CrudType';
+import { Context } from '../types/Context';
+import { logger } from '@/web-controller/services/LoggingService';
 
-export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, RegisterUserResponseDto> {
-  private userRepository: IUserRepository;
-
-  static readonly crudType = CrudType.CREATE;
-  static readonly isPublic = true;
-
-  constructor(userRepository: IUserRepository) {
-    this.userRepository = userRepository;
-  }
-
-  async execute(context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> {
+export const RegisterUserUseCase: UseCase<RegisterUserCommandDto, RegisterUserResponseDto> = Object.assign(
+  async (context: Context, command: RegisterUserCommandDto): Promise<RegisterUserResponseDto> => {
     // Validate command/query as per architecture rules
-    this.validateCommand(command);
+    validateCommand(command);
 
     // Check if user with email already exists
-    const existingUser = await this.userRepository.findByEmail(command.email);
+    const existingUser = await context.app.userRepository.findByEmail(command.email);
     if (existingUser) {
       throw new ConflictDomainError(
         'User with this email already exists'
@@ -51,7 +42,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     }
 
     // Create user in database
-    const createdUser = await this.userRepository.create(user);
+    const createdUser = await context.app.userRepository.create(user);
 
     // Hash password
     const saltRounds = 12;
@@ -78,7 +69,7 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
     }
 
     // Create authentication in database
-    await this.userRepository.createAuthentication(userAuth);
+    await context.app.userRepository.createAuthentication(userAuth);
     // Return DTO response
     const userDto: any = {
       id: createdUser.id!,
@@ -102,50 +93,53 @@ export class RegisterUserUseCase implements UseCase<RegisterUserCommandDto, Regi
       accessToken: '', // These will be filled by the web controller
       refreshToken: ''
     };
+  },
+  {
+    crudType: CrudType.CREATE,
+    isPublic: true
+  })
+
+/**
+ * Validate command input as per architecture rules
+ * Command/Query validation must be stateless and not require repository usage
+ */
+function validateCommand(command: RegisterUserCommandDto): void {
+  const errors: ValidationError[] = [];
+
+  if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {
+    errors.push(new ValidationError('email', 'Email is required'));
+  } else if (command.email.length > 255) {
+    errors.push(new ValidationError('email', 'Email must not exceed 255 characters'));
   }
 
-  /**
-   * Validate command input as per architecture rules
-   * Command/Query validation must be stateless and not require repository usage
-   */
-  private validateCommand(command: RegisterUserCommandDto): void {
-    const errors: ValidationError[] = [];
+  if (!command.firstName || typeof command.firstName !== 'string' || command.firstName.trim().length === 0) {
+    errors.push(new ValidationError('firstName', 'First name is required'));
+  } else if (command.firstName.length > 100) {
+    errors.push(new ValidationError('firstName', 'First name must not exceed 100 characters'));
+  }
 
-    if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {
-      errors.push(new ValidationError('email', 'Email is required'));
-    } else if (command.email.length > 255) {
-      errors.push(new ValidationError('email', 'Email must not exceed 255 characters'));
-    }
+  if (!command.lastName || typeof command.lastName !== 'string' || command.lastName.trim().length === 0) {
+    errors.push(new ValidationError('lastName', 'Last name is required'));
+  } else if (command.lastName.length > 100) {
+    errors.push(new ValidationError('lastName', 'Last name must not exceed 100 characters'));
+  }
 
-    if (!command.firstName || typeof command.firstName !== 'string' || command.firstName.trim().length === 0) {
-      errors.push(new ValidationError('firstName', 'First name is required'));
-    } else if (command.firstName.length > 100) {
-      errors.push(new ValidationError('firstName', 'First name must not exceed 100 characters'));
-    }
+  if (!command.password || typeof command.password !== 'string') {
+    errors.push(new ValidationError('password', 'Password is required'));
+  }
 
-    if (!command.lastName || typeof command.lastName !== 'string' || command.lastName.trim().length === 0) {
-      errors.push(new ValidationError('lastName', 'Last name is required'));
-    } else if (command.lastName.length > 100) {
-      errors.push(new ValidationError('lastName', 'Last name must not exceed 100 characters'));
-    }
+  if (!command.password || command.password.length < 8) {
+    errors.push(new ValidationError('password', 'Password must be at least 8 characters long'));
+  }
 
-    if (!command.password || typeof command.password !== 'string') {
-      errors.push(new ValidationError('password', 'Password is required'));
-    }
-    
-    if (!command.password || command.password.length < 8) {
-      errors.push(new ValidationError('password', 'Password must be at least 8 characters long'));
-    }
+  if (command.password.length > 128) {
+    errors.push(new ValidationError('password', 'Password must be less than 128 characters'));
+  }
 
-    if (command.password.length > 128) {
-      errors.push(new ValidationError('password', 'Password must be less than 128 characters'));
-    }
-
-    if (errors.length !== 0) {
-      throw new ValidationDomainError(
-        'Invalid registration command',
-        errors
-      );
-    }
+  if (errors.length !== 0) {
+    throw new ValidationDomainError(
+      'Invalid registration command',
+      errors
+    );
   }
 }

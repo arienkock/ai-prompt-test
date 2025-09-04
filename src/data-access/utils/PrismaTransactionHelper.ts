@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { ValidationResult, ValidationError } from '@/shared/types/ValidationTypes';
+import { ValidationResult, ValidationError } from '@/domain/types/ValidationTypes';
 
 export type PrismaTransactionCallback<T> = (prisma: PrismaClient) => Promise<T>;
 

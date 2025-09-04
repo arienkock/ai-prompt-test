@@ -1,5 +1,5 @@
 import { Entity } from './Entity';
-import { ValidationResult, ValidationError } from '@/shared/types/ValidationTypes';
+import { ValidationResult, ValidationError } from '@/domain/types/ValidationTypes';
 
 /**
  * User entity following architecture rules:

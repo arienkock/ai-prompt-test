@@ -1,32 +1,23 @@
 import * as bcrypt from 'bcryptjs';
-import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationError, Context } from '@/shared/types/ValidationTypes';
+import { ValidationError } from '@/domain/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, AuthenticationDomainError } from '../entities/DomainErrors';
 import { LoginUserCommandDto, LoginUserResponseDto } from '../types/Dtos';
 import { CrudType } from '../types/CrudType';
+import { Context } from '../types/Context';
 
-export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserResponseDto> {
-  private userRepository: IUserRepository;
-
-  static readonly crudType = CrudType.CREATE; // Creates a new session/authentication state
-  static readonly isPublic = true;
-
-  constructor(userRepository: IUserRepository) {
-    this.userRepository = userRepository;
-  }
-
-  async execute(context: Context, command: LoginUserCommandDto): Promise<LoginUserResponseDto> {
+export const LoginUserUseCase: UseCase<LoginUserCommandDto, LoginUserResponseDto> = Object.assign(
+  async (context: Context, command: LoginUserCommandDto): Promise<LoginUserResponseDto> => {
     console.log(`Login attempt for email: ${command.email}`);
-    
+
     // Validate command/query as per architecture rules
-    this.validateCommand(command);
+    validateCommand(command);
 
     // Find user with email authentication
     console.log(`Finding user with authentication for email: ${command.email}`);
-    const userWithAuth = await this.userRepository.findUserWithAuthentication(command.email, 'email');
+    const userWithAuth = await context.app.userRepository.findUserWithAuthentication(command.email, 'email');
     console.log(`User with auth result: ${JSON.stringify(userWithAuth)}`);
-    
+
     if (!userWithAuth) {
       console.log(`No user found with email: ${command.email}`);
       throw new AuthenticationDomainError(
@@ -80,34 +71,37 @@ export class LoginUserUseCase implements UseCase<LoginUserCommandDto, LoginUserR
       accessToken: '', // These will be filled by the web controller
       refreshToken: ''
     };
+  },
+  {
+    crudType: CrudType.CREATE,
+    isPublic: true
+  })
+
+/**
+ * Validate command input as per architecture rules
+ * Command/Query validation must be stateless and not require repository usage
+ */
+function validateCommand(command: LoginUserCommandDto): void {
+  const errors: ValidationError[] = [];
+
+  if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {
+    errors.push(new ValidationError('email', 'Email is required'));
+  } else {
+    if (command.email.length > 320) {
+      errors.push(new ValidationError('email', 'Email is too long'));
+    }
   }
 
-  /**
-   * Validate command input as per architecture rules
-   * Command/Query validation must be stateless and not require repository usage
-   */
-  private validateCommand(command: LoginUserCommandDto): void {
-    const errors: ValidationError[] = [];
+  if (!command.password || typeof command.password !== 'string' || command.password.length === 0) {
+    errors.push(new ValidationError('password', 'Password is required'));
+  } else if (command.password.length > 128) {
+    errors.push(new ValidationError('password', 'Password is too long'));
+  }
 
-    if (!command.email || typeof command.email !== 'string' || command.email.trim().length === 0) {
-      errors.push(new ValidationError('email', 'Email is required'));
-    } else {
-      if (command.email.length > 320) {
-        errors.push(new ValidationError('email', 'Email is too long'));
-      }
-    }
-
-    if (!command.password || typeof command.password !== 'string' || command.password.length === 0) {
-      errors.push(new ValidationError('password', 'Password is required'));
-    } else if (command.password.length > 128) {
-      errors.push(new ValidationError('password', 'Password is too long'));
-    }
-
-    if (errors.length !== 0) {
-      throw new ValidationDomainError(
-        'Invalid login command',
-        errors
-      );
-    }
+  if (errors.length !== 0) {
+    throw new ValidationDomainError(
+      'Invalid login command',
+      errors
+    );
   }
 }

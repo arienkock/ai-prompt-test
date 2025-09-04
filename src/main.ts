@@ -2,17 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import morgan from 'morgan';
-import { PrismaClient } from '@prisma/client';
 import { AuthRoutes } from './web-controller/routes/AuthRoutes';
 import { UserRoutes } from './web-controller/routes/UserRoutes';
 import { ErrorHandler } from './web-controller/middleware/ErrorHandler';
 import { logger } from './web-controller/services/LoggingService';
+import { AuthMiddleware } from './web-controller/middleware/AuthMiddleware';
+import { CreateAppContext } from './web-controller/AppContext';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Initialize Prisma client
-const prisma = new PrismaClient();
+const appContext = CreateAppContext();
 
 // Middleware
 app.use(cors());
@@ -30,14 +30,12 @@ app.get('/api/health', (req, res) => {
     architecture: 'Layered Architecture with Domain-Driven Design'
   });
 });
-
+const authMwSupplier = new AuthMiddleware(appContext)
 // Authentication routes
-const authRoutes = new AuthRoutes(prisma);
-app.use('/api/auth', authRoutes.getRouter());
+app.use('/api/auth', AuthRoutes.buildRouter(authMwSupplier));
 
 // User management routes
-const userRoutes = new UserRoutes(prisma);
-app.use('/api/users', userRoutes.getRouter());
+app.use('/api/users', UserRoutes.buildRouter(authMwSupplier));
 
 // Serve static files from frontend build
 const frontendDistPath = path.join(__dirname, '../frontend/dist');
@@ -66,10 +64,6 @@ app.use(ErrorHandler.handle);
 // Start server with Prisma initialization
 async function startServer() {
   try {
-    // Test Prisma connection
-    await prisma.$connect();
-    logger.info('✅ Database connected successfully');
-    
     // Start the server
     app.listen(PORT, () => {
       logger.info(`🚀 Server running on http://localhost:${PORT}`);
@@ -81,7 +75,6 @@ async function startServer() {
     });
   } catch (error) {
     logger.error('Failed to start server: %o', error as Error);
-    await prisma.$disconnect();
     process.exit(1);
   }
 }

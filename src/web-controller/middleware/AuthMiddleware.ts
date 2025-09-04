@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { jwtService } from '@/shared/services/JwtService';
-import { Context } from '@/shared/types/ValidationTypes';
 import { AuthenticationDomainError } from '@/domain/entities/DomainErrors';
+import { AppContext, Context } from '@/domain/types/Context';
 
 // Extend Express Request to include user context
 declare global {
@@ -17,11 +17,14 @@ declare global {
 }
 
 export class AuthMiddleware {
+
+  constructor(private appContext: AppContext) {}
+
   /**
    * Middleware to authenticate requests using JWT tokens
    * Now throws domain errors instead of creating responses
    */
-  static authenticate(req: Request, res: Response, next: NextFunction): void {
+  authenticate = (req: Request, res: Response, next: NextFunction): void => {
     try {
       const authHeader = req.headers.authorization;
       const token = jwtService.extractTokenFromHeader(authHeader);
@@ -42,8 +45,9 @@ export class AuthMiddleware {
       };
 
       // Create context for the request
-      req.context = new Context(payload.userId);
-
+      req.context = this.appContext.createRequestContext()
+      req.context.userId = payload.userId
+      
       next();
     } catch (error) {
       // Pass any error to the unified error handler
@@ -54,10 +58,11 @@ export class AuthMiddleware {
   /**
    * Optional authentication - doesn't fail if no token, but adds user info if token is valid
    */
-  static optionalAuthenticate(req: Request, res: Response, next: NextFunction): void {
+  optionalAuthenticate = (req: Request, res: Response, next: NextFunction): void => {
     try {
       const authHeader = req.headers.authorization;
       const token = jwtService.extractTokenFromHeader(authHeader);
+      req.context = this.appContext.createRequestContext()
 
       if (token) {
         const payload = jwtService.verifyAccessToken(token);
@@ -66,19 +71,13 @@ export class AuthMiddleware {
             userId: payload.userId,
             email: payload.email
           };
-          req.context = new Context(payload.userId);
+          req.context.userId = payload.userId
         }
-      }
-
-      // Always continue, regardless of token validity
-      if (!req.context) {
-        req.context = new Context();
       }
 
       next();
     } catch (error) {
       // Even if there's an error, continue without authentication
-      req.context = new Context();
       next();
     }
   }
@@ -86,9 +85,9 @@ export class AuthMiddleware {
   /**
    * Middleware to ensure user has valid context
    */
-  static requireContext(req: Request, res: Response, next: NextFunction): void {
+  requireContext(req: Request, res: Response, next: NextFunction): void {
     if (!req.context) {
-      req.context = new Context();
+      req.context = this.appContext.createRequestContext()
     }
     next();
   }

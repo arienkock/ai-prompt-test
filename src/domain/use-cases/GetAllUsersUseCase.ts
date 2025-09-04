@@ -1,27 +1,18 @@
-import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationError, Context } from '@/shared/types/ValidationTypes';
+import { ValidationError } from '@/domain/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, NotFoundDomainError, AuthorizationDomainError } from '../entities/DomainErrors';
 import { GetAllUsersQueryDto, GetAllUsersResponseDto, PaginationParams, UserDto } from '../types/Dtos';
 import { CrudType } from '../types/CrudType';
+import { Context } from '../types/Context';
 
-export class GetAllUsersUseCase implements UseCase<GetAllUsersQueryDto, GetAllUsersResponseDto> {
-  private userRepository: IUserRepository;
-
-  static readonly crudType = CrudType.READ;
-  static readonly isPublic = false;
-
-  constructor(userRepository: IUserRepository) {
-    this.userRepository = userRepository;
-  }
-
-  async execute(context: Context, query: GetAllUsersQueryDto): Promise<GetAllUsersResponseDto> {
+export const GetAllUsersUseCase: UseCase<GetAllUsersQueryDto, GetAllUsersResponseDto> = Object.assign(
+  async (context: Context, query: GetAllUsersQueryDto): Promise<GetAllUsersResponseDto> => {
     // Authorization check - only admins can list all users
-    await this.authorizationCheck(context);
+    await authorizationCheck(context);
 
     // Handle pagination - routeToUseCase passes query params directly, so we need to construct PaginationParams
     let pagination: PaginationParams;
-    
+
     if (query.pagination) {
       // If pagination object is provided, use it
       pagination = query.pagination;
@@ -34,10 +25,10 @@ export class GetAllUsersUseCase implements UseCase<GetAllUsersQueryDto, GetAllUs
     }
 
     // Validate pagination
-    this.validatePagination(pagination);
+    validatePagination(pagination);
 
     // Get paginated users from repository
-    const paginatedUsers = await this.userRepository.findMany(pagination);
+    const paginatedUsers = await context.app.userRepository.findMany(pagination);
 
     // Transform User entities to UserDTOs
     const userDtos: UserDto[] = paginatedUsers.data.map(user => {
@@ -65,49 +56,50 @@ export class GetAllUsersUseCase implements UseCase<GetAllUsersQueryDto, GetAllUs
       users: userDtos,
       meta: paginatedUsers.meta
     };
+  },
+  {
+    crudType: CrudType.READ,
+    isPublic: false
+  })
+
+
+async function authorizationCheck(context: Context): Promise<void> {
+  if (!context.userId) {
+    throw new AuthorizationDomainError('Authentication required');
   }
 
-  private async authorizationCheck(context: Context): Promise<void> {
-    if (!context.userId) {
-      throw new AuthorizationDomainError('Authentication required');
-    }
+  // Fetch the user to check admin status
+  const user = await context.app.userRepository.findById(context.userId);
 
-    // Fetch the user to check admin status
-    const user = await this.userRepository.findById(context.userId);
-    
-    if (!user) {
-      throw new NotFoundDomainError('User not found');
-    }
-
-    if (!user.isActive) {
-      throw new AuthorizationDomainError('Account is not active');
-    }
-
-    if (!user.isAdmin) {
-      throw new AuthorizationDomainError('Access denied - admin privileges required');
-    }
+  if (!user) {
+    throw new NotFoundDomainError('User not found');
   }
 
-  /**
-   * Validate pagination parameters as per architecture rules
-   * Command/Query validation must be stateless and not require repository usage
-   */
-  private validatePagination(pagination: PaginationParams): void {
-    const errors: ValidationError[] = [];
+  if (!user.isActive) {
+    throw new AuthorizationDomainError('Account is not active');
+  }
 
-    if (pagination.page < 1) {
-      errors.push(new ValidationError('page', 'Page must be a positive number'));
-    }
+  if (!user.isAdmin) {
+    throw new AuthorizationDomainError('Access denied - admin privileges required');
+  }
+}
 
-    if (pagination.pageSize < 1 || pagination.pageSize > 500) {
-      errors.push(new ValidationError('pageSize', 'Page size must be a number between 1 and 500'));
-    }
 
-    if (errors.length !== 0) {
-      throw new ValidationDomainError(
-        'Invalid pagination parameters',
-        errors
-      );
-    }
+function validatePagination(pagination: PaginationParams): void {
+  const errors: ValidationError[] = [];
+
+  if (pagination.page < 1) {
+    errors.push(new ValidationError('page', 'Page must be a positive number'));
+  }
+
+  if (pagination.pageSize < 1 || pagination.pageSize > 500) {
+    errors.push(new ValidationError('pageSize', 'Page size must be a number between 1 and 500'));
+  }
+
+  if (errors.length !== 0) {
+    throw new ValidationDomainError(
+      'Invalid pagination parameters',
+      errors
+    );
   }
 }

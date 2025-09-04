@@ -1,30 +1,21 @@
-import { IUserRepository } from '../repositories/IUserRepository';
-import { ValidationError, Context } from '@/shared/types/ValidationTypes';
+import { ValidationError } from '@/domain/types/ValidationTypes';
 import { UseCase } from '../types/UseCase';
 import { ValidationDomainError, NotFoundDomainError, AuthorizationDomainError } from '../entities/DomainErrors';
 import { GetUserProfileQueryDto, GetUserProfileResponseDto } from '../types/Dtos';
 import { CrudType } from '../types/CrudType';
+import { Context } from '../types/Context';
 
-export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, GetUserProfileResponseDto> {
-  private userRepository: IUserRepository;
-
-  static readonly crudType = CrudType.READ;
-  static readonly isPublic = false;
-
-  constructor(userRepository: IUserRepository) {
-    this.userRepository = userRepository;
-  }
-
-  async execute(context: Context, query: GetUserProfileQueryDto): Promise<GetUserProfileResponseDto> {
+export const GetUserProfileUseCase: UseCase<GetUserProfileQueryDto, GetUserProfileResponseDto> = Object.assign(
+  async (context: Context, query: GetUserProfileQueryDto): Promise<GetUserProfileResponseDto> => {
     // Validate query as per architecture rules
-    this.validateQuery(query);
+    validateQuery(query);
 
     // Authorization check - user can only access their own profile
-    this.authorizationCheck(context, query);
+    authorizationCheck(context, query);
 
     // Find user by ID
-    const user = await this.userRepository.findById(query.userId);
-    
+    const user = await context.app.userRepository.findById(query.userId);
+
     if (!user) {
       throw new NotFoundDomainError('User not found');
     }
@@ -54,34 +45,37 @@ export class GetUserProfileUseCase implements UseCase<GetUserProfileQueryDto, Ge
     return {
       user: userDto
     };
+  },
+  {
+    crudType: CrudType.READ,
+    isPublic: false
+  })
+
+function authorizationCheck(context: Context, query: GetUserProfileQueryDto) {
+  if (!context.userId) {
+    throw new AuthorizationDomainError('Authentication required');
   }
 
-    private authorizationCheck(context: Context, query: GetUserProfileQueryDto) {
-        if (!context.userId) {
-            throw new AuthorizationDomainError('Authentication required');
-        }
+  if (context.userId !== query.userId) {
+    throw new AuthorizationDomainError('Access denied - can only access own profile');
+  }
+}
 
-        if (context.userId !== query.userId) {
-            throw new AuthorizationDomainError('Access denied - can only access own profile');
-        }
-    }
+/**
+ * Validate query input as per architecture rules
+ * Command/Query validation must be stateless and not require repository usage
+ */
+function validateQuery(query: GetUserProfileQueryDto): void {
+  const errors: ValidationError[] = [];
 
-  /**
-   * Validate query input as per architecture rules
-   * Command/Query validation must be stateless and not require repository usage
-   */
-  private validateQuery(query: GetUserProfileQueryDto): void {
-    const errors: ValidationError[] = [];
+  if (!query.userId || typeof query.userId !== 'string' || query.userId.trim().length === 0) {
+    errors.push(new ValidationError('userId', 'User ID is required'));
+  }
 
-    if (!query.userId || typeof query.userId !== 'string' || query.userId.trim().length === 0) {
-      errors.push(new ValidationError('userId', 'User ID is required'));
-    }
-
-    if (errors.length !== 0) {
-      throw new ValidationDomainError(
-        'Invalid get profile query',
-        errors
-      );
-    }
+  if (errors.length !== 0) {
+    throw new ValidationDomainError(
+      'Invalid get profile query',
+      errors
+    );
   }
 }

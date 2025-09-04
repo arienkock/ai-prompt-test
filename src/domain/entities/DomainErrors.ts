@@ -1,4 +1,4 @@
-import { ValidationError } from '@/shared/types/ValidationTypes';
+import { ValidationError } from '@/domain/types/ValidationTypes';
 
 /**
  * Base error codes for domain errors as per architecture rules

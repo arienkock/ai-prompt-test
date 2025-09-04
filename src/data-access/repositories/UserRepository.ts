@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { User } from '../../domain/entities/User';
 import { UserAuthentication } from '../../domain/entities/UserAuthentication';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
-import { ValidationResult, ValidationError } from '../../shared/types/ValidationTypes';
+import { ValidationResult, ValidationError } from '../../domain/types/ValidationTypes';
 import { PaginatedResults, PaginationParams, PaginationMeta } from '../../domain/types/Dtos';
 import { ValidationDomainError, SystemError } from '../../domain/entities/DomainErrors';
 

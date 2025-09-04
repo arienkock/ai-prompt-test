@@ -1,10 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { UseCase, UseCaseConstructor } from '@/domain/types/UseCase';
+import { UseCase } from '@/domain/types/UseCase';
 import { CrudType } from '@/domain/types/CrudType';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';
-import { PrismaTransactionHelper } from '@/data-access/utils/PrismaTransactionHelper';
-import { Context } from '@/shared/types/ValidationTypes';
 import { logger } from '../services/LoggingService';
 
 /**
@@ -24,35 +21,37 @@ function mapCrudTypeToHttpMethod(crudType: CrudType): 'get' | 'post' | 'put' | '
  * Utility function to setup routes with use cases following the architecture pattern
  * Handles method determination, authentication middleware, and transaction management
  */
-export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCommand, TResponse>>(
+export function routeToUseCase<TCommand, TResponse>(
   router: Router,
   path: string,
-  prisma: PrismaClient,
-  useCaseDetails: {
-    crudType: CrudType,
-    isPublic: boolean
-  },
-  useCaseFactory: (prismaTransaction?: any) => TUseCase,
+  // prisma: PrismaClient,
+  // useCaseDetails: {
+  //   crudType: CrudType,
+  //   isPublic: boolean
+  // },
+  // useCaseFactory: (prismaTransaction?: any) => TUseCase,
+  authMwSupplier: AuthMiddleware,
+  useCase: UseCase<TCommand, TResponse>,
   responseHandler?: (result: TResponse, req: Request, res: Response) => void,
 ): void {
   // Create a sample instance to get the constructor reference
   const {
     crudType,
     isPublic
-  } = useCaseDetails
+  } = useCase
   // Determine HTTP method based on explicit parameter or CRUD type
   const method = mapCrudTypeToHttpMethod(crudType);
   
   // Determine authentication middleware based on use case visibility
   const authMiddleware = isPublic 
-    ? AuthMiddleware.optionalAuthenticate 
-    : AuthMiddleware.authenticate;
+    ? authMwSupplier.optionalAuthenticate 
+    : authMwSupplier.authenticate;
 
   // Create transaction helper
-  const transactionHelper = new PrismaTransactionHelper(prisma);
+  // const transactionHelper = new PrismaTransactionHelper(prisma);
 
   // Setup the route with proper middleware chain
-  router[method](path, authMiddleware, wrapAsync(async (req: Request, res: Response, next: NextFunction) => {
+  router[method](path, authMiddleware, wrapAsync(async (req: Request, res: Response) => {
     // Log incoming context and DTO at debug level
     logger.debug({ 
       route: path,
@@ -89,11 +88,12 @@ export function routeToUseCase<TCommand, TResponse, TUseCase extends UseCase<TCo
     logger.debug({ command }, `Processing DTO for ${path}`);
 
     // Execute use case within transaction context
-    const result = await transactionHelper.executeUseCase<TCommand, TResponse, TUseCase>(
-      useCaseFactory,
-      req.context!,
-      command
-    );
+    // const result = await transactionHelper.executeUseCase<TCommand, TResponse, TUseCase>(
+    //   useCaseFactory,
+    //   req.context!,
+    //   command
+    // );
+    const result = await useCase(req.context!, command);
 
     // After use case execution, create a wrapper around res.json to log the response
     const originalJson = res.json;

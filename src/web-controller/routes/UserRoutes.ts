@@ -1,39 +1,22 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { GetAllUsersUseCase } from '@/domain/use-cases/GetAllUsersUseCase';
-import { UserRepository } from '@/data-access/repositories/UserRepository';
-import { ErrorHandler } from '../middleware/ErrorHandler';
 import { 
   GetAllUsersQueryDto, 
   GetAllUsersResponseDto
 } from '@/domain/types/Dtos';
 import { routeToUseCase } from '../utils/RouteUtils';
+import { AuthMiddleware } from '../middleware/AuthMiddleware';
 
-export class UserRoutes {
-  private router: Router;
-  private prisma: PrismaClient;
-
-  constructor(prisma: PrismaClient) {
-    this.router = Router();
-    this.prisma = prisma;
-    this.setupRoutes();
-  }
-
-  private setupRoutes(): void {
+export const UserRoutes = {
+  buildRouter(authMiddlewareProvider: AuthMiddleware): Router {
+    const router = Router()
     // Get all users route - private read operation requiring admin privileges
-    routeToUseCase<GetAllUsersQueryDto, GetAllUsersResponseDto, GetAllUsersUseCase>(
-      this.router,
+    routeToUseCase<GetAllUsersQueryDto, GetAllUsersResponseDto>(
+      router,
       '/',
-      this.prisma,
-      GetAllUsersUseCase,
-      (prismaTransaction) => {
-        const userRepository = new UserRepository(prismaTransaction);
-        return new GetAllUsersUseCase(userRepository);
-      }
+      authMiddlewareProvider,
+      GetAllUsersUseCase
     );
-  }
-
-  getRouter(): Router {
-    return this.router;
+    return router
   }
 }

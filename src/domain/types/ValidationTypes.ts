@@ -30,18 +30,3 @@ export class ValidationResult {
   }
 }
 
-// Context object as per architecture rules
-export class Context {
-  public readonly requestId: string;
-
-  constructor(
-    public readonly userId?: string | null,
-    requestId?: string | null
-  ) {
-    this.requestId = requestId || this._generateRequestId();
-  }
-
-  private _generateRequestId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
-}
